@@ -61,20 +61,20 @@ export function AdminAssistantPanel({ id, order, onApplyOffer }: Props) {
         {status === "idle" && <button className="button button-small" disabled={!config.ai.configured} onClick={analyze}>Analisis dengan AI <WandSparkles /></button>}
         {status === "ready" && config.ai.configured && <button className="button button-ghost button-small" onClick={analyze}>Buat ulang draf</button>}
       </div>
-      <p className="assistant-privacy"><AlertCircle /> {config.ai.configured ? "Brief, judul, tenggat, anggaran, dan metadata lampiran dikirim ke OpenAI saat tombol analisis ditekan. Isi file, nama, dan WhatsApp tidak dikirim." : "Mode otomatis belum aktif. Gunakan mode ChatGPT manual di bawah, atau tambahkan OPENAI_API_KEY pada server."}</p>
+      <p className="assistant-privacy"><AlertCircle /> {config.ai.configured ? "Brief, judul, tenggat, anggaran, dan metadata lampiran dikirim ke AI (OpenRouter Hermes) saat tombol analisis ditekan. Isi file, nama, dan WhatsApp tidak dikirim." : "Mode otomatis belum aktif. Tambahkan OPENROUTER_API_KEY pada server atau gunakan mode salin prompt manual di bawah."}</p>
 
       <details className="assistant-manual">
-        <summary>Pakai akun ChatGPT secara manual</summary>
+        <summary>Salin prompt AI secara manual</summary>
         <div className="assistant-manual-body">
-          <p>Salin prompt, buka ChatGPT, kirim prompt tersebut, lalu tempel JSON hasilnya kembali di bawah. Nama pelanggan dan WhatsApp tidak ikut disalin.</p>
-          <textarea readOnly rows={6} value={buildChatGptPrompt(order)} aria-label="Prompt untuk ChatGPT" />
+          <p>Salin prompt, buka AI pilihan Anda (OpenRouter / ChatGPT / Claude), kirim prompt tersebut, lalu tempel JSON hasilnya kembali di bawah. Nama pelanggan dan WhatsApp tidak ikut disalin.</p>
+          <textarea readOnly rows={6} value={buildChatGptPrompt(order)} aria-label="Prompt untuk AI" />
           <div className="assistant-manual-actions">
             <button type="button" className="button button-small" onClick={() => void copyPrompt()}><Clipboard /> {copied ? "Prompt tersalin" : "Salin prompt"}</button>
             <a className="button button-ghost button-small" href="https://chatgpt.com/" target="_blank" rel="noreferrer">Buka ChatGPT <ExternalLink /></a>
           </div>
-          <label htmlFor={`chatgpt-result-${order.id}`}>Tempel JSON hasil ChatGPT</label>
+          <label htmlFor={`chatgpt-result-${order.id}`}>Tempel JSON hasil AI</label>
           <textarea id={`chatgpt-result-${order.id}`} rows={6} value={manualResult} onChange={(event) => setManualResult(event.target.value)} placeholder='{"summary":"...","missingInformation":[],...}' />
-          <button type="button" className="button button-small" disabled={!manualResult.trim()} onClick={importManualResult}>Gunakan hasil ChatGPT <ArrowRight /></button>
+          <button type="button" className="button button-small" disabled={!manualResult.trim()} onClick={importManualResult}>Gunakan hasil AI <ArrowRight /></button>
         </div>
       </details>
 
