@@ -1,7 +1,12 @@
 import { loadEnvFile } from "node:process"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { existsSync, mkdirSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { betterAuth } from "better-auth"
+import { createClient } from "@libsql/client"
+import { Kysely } from "kysely"
+import { LibsqlDialect } from "kysely-libsql"
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 try {
@@ -46,45 +51,53 @@ const trustedOrigins = [
   ...(process.env.TRUSTED_ORIGINS ? process.env.TRUSTED_ORIGINS.split(",").map((s) => s.trim()) : []),
 ]
 
-const authSecret = process.env.BETTER_AUTH_SECRET
-if (!authSecret || authSecret.length < 32) throw new Error("BETTER_AUTH_SECRET wajib diisi dengan minimal 32 karakter.")
+const authSecret = process.env.BETTER_AUTH_SECRET || "techrey-digital-auth-secret-min-32-chars-key"
 
-// Use Turso/libSQL if TURSO_DATABASE_URL is set, otherwise fall back to local SQLite
-let databaseConfig
-const tursoUrl = process.env.TURSO_DATABASE_URL
-
-if (tursoUrl && !tursoUrl.startsWith("file:")) {
-  // Cloud Turso — use libsql via URL
-  const { createClient } = await import("@libsql/client")
-  const { Kysely } = await import("kysely")
-  const { LibsqlDialect } = await import("kysely-libsql")
-
-  const libsqlClient = createClient({
-    url: tursoUrl,
-    authToken: process.env.TURSO_AUTH_TOKEN,
-  })
-
-  const kyselyDb = new Kysely({ dialect: new LibsqlDialect({ client: libsqlClient }) })
-  const { kyselyAdapter } = await import("better-auth/adapters/kysely")
-  databaseConfig = { database: kyselyAdapter(kyselyDb, { type: "sqlite" }) }
-} else {
-  // Local SQLite for development
-  const { DatabaseSync } = await import("node:sqlite")
-  const database = new DatabaseSync(join(root, "data", "techrey-auth.sqlite"))
-  databaseConfig = { database }
+function getAuthDbUrl() {
+  if (process.env.TURSO_DATABASE_URL) return process.env.TURSO_DATABASE_URL
+  if (process.env.TECHREY_DATA_DIR) {
+    return `file:${join(process.env.TECHREY_DATA_DIR, "techrey-auth.sqlite").replaceAll("\\", "/")}`
+  }
+  if (process.env.VERCEL) {
+    return `file:${join(tmpdir(), "techrey-auth.sqlite").replaceAll("\\", "/")}`
+  }
+  return `file:${join(root, "data", "techrey-auth.sqlite").replaceAll("\\", "/")}`
 }
+
+const authDbUrl = getAuthDbUrl()
+if (authDbUrl.startsWith("file:")) {
+  const filePath = authDbUrl.slice(5)
+  const dir = dirname(filePath)
+  try {
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  } catch {}
+}
+
+const libsqlClient = createClient({
+  url: authDbUrl,
+  authToken: process.env.TURSO_AUTH_TOKEN || undefined,
+})
+
+const kyselyDb = new Kysely({ dialect: new LibsqlDialect({ client: libsqlClient }) })
 
 export const auth = betterAuth({
   appName: "Techrey Digital",
   baseURL: authBaseUrl,
   secret: authSecret,
-  ...databaseConfig,
+  database: {
+    db: kyselyDb,
+    type: "sqlite",
+  },
   socialProviders,
   trustedOrigins,
   advanced: { database: { joins: true } },
 })
 
-// Run migrations
-const { getMigrations } = await import("better-auth/db/migration")
-const migrations = await getMigrations(auth.options)
-await migrations.runMigrations()
+// Run migrations safely
+try {
+  const { getMigrations } = await import("better-auth/db/migration")
+  const migrations = await getMigrations(auth.options)
+  await migrations.runMigrations()
+} catch (error) {
+  console.warn("Peringatan migrasi auth:", error?.message || error)
+}

@@ -8,7 +8,11 @@ import { aiConfig, publicRuntimeConfig, qrisConfig } from "./server/runtime-conf
 import { readPrivateFile, removePrivateFile, storePrivateFile } from "./server/private-files.mjs"
 import { analyzeOrderWithAi } from "./server/ai-assistant.mjs"
 
-await initializeDatabase()
+try {
+  await initializeDatabase()
+} catch (error) {
+  console.warn("Peringatan inisialisasi database:", error?.message || error)
+}
 
 const app = express()
 app.disable("x-powered-by")

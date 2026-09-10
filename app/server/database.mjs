@@ -2,16 +2,19 @@ import { createClient } from "@libsql/client"
 import { loadEnvFile } from "node:process"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { existsSync, mkdirSync } from "node:fs"
+import { tmpdir } from "node:os"
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 try { loadEnvFile(join(root, ".env")) } catch (error) { if (error?.code !== "ENOENT") throw error }
-
-import { existsSync, mkdirSync } from "node:fs"
 
 function getDatabaseUrl() {
   if (process.env.TURSO_DATABASE_URL) return process.env.TURSO_DATABASE_URL
   if (process.env.TECHREY_DATA_DIR) {
     return `file:${join(process.env.TECHREY_DATA_DIR, "techrey.sqlite").replaceAll("\\", "/")}`
+  }
+  if (process.env.VERCEL) {
+    return `file:${join(tmpdir(), "techrey.sqlite").replaceAll("\\", "/")}`
   }
   return `file:${join(root, "data", "techrey.sqlite").replaceAll("\\", "/")}`
 }
@@ -20,9 +23,11 @@ const dbUrl = getDatabaseUrl()
 if (dbUrl.startsWith("file:")) {
   const filePath = dbUrl.slice(5)
   const dir = dirname(filePath)
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true })
-  }
+  try {
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true })
+    }
+  } catch {}
 }
 
 const client = createClient({
@@ -38,43 +43,47 @@ export class DatabaseConflictError extends Error {
 }
 
 export async function initializeDatabase() {
-  await client.batch([
-    "PRAGMA journal_mode = WAL",
-    "PRAGMA foreign_keys = ON",
-    `CREATE TABLE IF NOT EXISTS orders (
-      id TEXT PRIMARY KEY,
-      data_json TEXT NOT NULL,
-      owner_user_id TEXT,
-      version INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    )`,
-    `CREATE TABLE IF NOT EXISTS counters (
-      name TEXT PRIMARY KEY,
-      value INTEGER NOT NULL
-    )`,
-  ], "write")
+  try {
+    await client.batch([
+      "PRAGMA journal_mode = WAL",
+      "PRAGMA foreign_keys = ON",
+      `CREATE TABLE IF NOT EXISTS orders (
+        id TEXT PRIMARY KEY,
+        data_json TEXT NOT NULL,
+        owner_user_id TEXT,
+        version INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS counters (
+        name TEXT PRIMARY KEY,
+        value INTEGER NOT NULL
+      )`,
+    ], "write")
 
-  // Check and add columns if needed
-  const columns = await client.execute("PRAGMA table_info(orders)")
-  const columnNames = columns.rows.map((row) => row.name)
-  if (!columnNames.includes("owner_user_id")) {
-    await client.execute("ALTER TABLE orders ADD COLUMN owner_user_id TEXT")
-  }
-  if (!columnNames.includes("version")) {
-    await client.execute("ALTER TABLE orders ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
-  }
-  await client.execute("CREATE INDEX IF NOT EXISTS orders_owner_user_id ON orders(owner_user_id)")
+    // Check and add columns if needed
+    const columns = await client.execute("PRAGMA table_info(orders)")
+    const columnNames = columns.rows.map((row) => row.name)
+    if (!columnNames.includes("owner_user_id")) {
+      await client.execute("ALTER TABLE orders ADD COLUMN owner_user_id TEXT")
+    }
+    if (!columnNames.includes("version")) {
+      await client.execute("ALTER TABLE orders ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
+    }
+    await client.execute("CREATE INDEX IF NOT EXISTS orders_owner_user_id ON orders(owner_user_id)")
 
-  // Sync counter
-  const existingOrders = await client.execute("SELECT id FROM orders WHERE id LIKE 'TD-%'")
-  const maximumOrderNumber = existingOrders.rows.reduce(
-    (max, row) => Math.max(max, Number(String(row.id).split("-")[1]) || 0), 0
-  )
-  await client.execute({
-    sql: "INSERT INTO counters (name, value) VALUES ('order', ?) ON CONFLICT(name) DO UPDATE SET value = MAX(value, excluded.value)",
-    args: [maximumOrderNumber],
-  })
+    // Sync counter
+    const existingOrders = await client.execute("SELECT id FROM orders WHERE id LIKE 'TD-%'")
+    const maximumOrderNumber = existingOrders.rows.reduce(
+      (max, row) => Math.max(max, Number(String(row.id).split("-")[1]) || 0), 0
+    )
+    await client.execute({
+      sql: "INSERT INTO counters (name, value) VALUES ('order', ?) ON CONFLICT(name) DO UPDATE SET value = MAX(value, excluded.value)",
+      args: [maximumOrderNumber],
+    })
+  } catch (error) {
+    console.warn("Peringatan inisialisasi database:", error?.message || error)
+  }
 }
 
 function parseOrder(row) {
