@@ -22,16 +22,19 @@ export const whatsappConfig = whatsappNumber.length >= 10
     }
   : { configured: false }
 
+const merchantName = (process.env.QRIS_MERCHANT_NAME || "TECHREY DIGITAL").trim()
+const qrisBlobUrl = (process.env.QRIS_BLOB_URL || "").trim()
+
 export const qrisConfig = {
   configured: Boolean(
-    (qrisImagePath && existsSync(qrisImagePath) && (process.env.QRIS_MERCHANT_NAME || "").trim() && [".png", ".jpg", ".jpeg", ".webp"].includes(qrisExtension)) ||
-    (Boolean(process.env.QRIS_BLOB_URL) && (process.env.QRIS_MERCHANT_NAME || "").trim())
+    (qrisImagePath && existsSync(qrisImagePath) && merchantName && [".png", ".jpg", ".jpeg", ".webp"].includes(qrisExtension)) ||
+    Boolean(qrisBlobUrl)
   ),
   imagePath: qrisImagePath,
   contentType: qrisExtension === ".png" ? "image/png" : qrisExtension === ".webp" ? "image/webp" : "image/jpeg",
-  merchantName: (process.env.QRIS_MERCHANT_NAME || "").trim(),
+  merchantName,
   // Vercel Blob URL for QRIS image (if stored in Blob)
-  blobUrl: process.env.QRIS_BLOB_URL || "",
+  blobUrl: qrisBlobUrl,
 }
 
 // AI config — supports OpenRouter (free Hermes) or OpenAI (paid)

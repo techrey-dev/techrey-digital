@@ -48,17 +48,37 @@ export async function storePrivateFile({ orderId, category, originalName, mimeTy
 }
 
 /**
+ * Fetch a blob buffer from public or private Vercel Blob store.
+ * Automatically handles Authorization with BLOB_READ_WRITE_TOKEN and cleans delegation tokens.
+ */
+export async function fetchBlobBuffer(url) {
+  if (!url) return null
+  try {
+    let response = await fetch(url)
+    if (!response.ok && (response.status === 401 || response.status === 403) && process.env.BLOB_READ_WRITE_TOKEN) {
+      const cleanUrl = url.split("?")[0]
+      response = await fetch(cleanUrl, {
+        headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+      })
+    }
+    if (!response.ok) return null
+    return {
+      buffer: Buffer.from(await response.arrayBuffer()),
+      contentType: response.headers.get("content-type") || "image/png",
+    }
+  } catch (err) {
+    console.error("fetchBlobBuffer error:", err?.message || err)
+    return null
+  }
+}
+
+/**
  * Read a file. Returns Buffer/Uint8Array or null.
  */
 export async function readPrivateFile(orderId, fileId, blobUrl) {
   if (useVercelBlob && blobUrl) {
-    try {
-      const response = await fetch(blobUrl)
-      if (!response.ok) return null
-      return Buffer.from(await response.arrayBuffer())
-    } catch {
-      return null
-    }
+    const result = await fetchBlobBuffer(blobUrl)
+    return result ? result.buffer : null
   }
 
   // Local fallback

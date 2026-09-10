@@ -5,7 +5,7 @@ import { auth, configuredProviders, getAdminEmails } from "./server/auth.mjs"
 import { applyAdminAction, applyCustomerAction, DomainRuleError } from "./server/domain.mjs"
 import { getOrder, getOrderForOwner, initializeDatabase, listOrders, listOrdersByOwner, nextOrderId, saveOrder } from "./server/database.mjs"
 import { aiConfig, publicRuntimeConfig, qrisConfig } from "./server/runtime-config.mjs"
-import { readPrivateFile, removePrivateFile, storePrivateFile } from "./server/private-files.mjs"
+import { fetchBlobBuffer, readPrivateFile, removePrivateFile, storePrivateFile } from "./server/private-files.mjs"
 import { analyzeOrderWithAi } from "./server/ai-assistant.mjs"
 
 try {
@@ -218,13 +218,11 @@ app.get("/api/customer/orders/:id/qris", asyncRoute(async (request, response) =>
   if ((!qrisConfig.configured && !qrisConfig.blobUrl) || !offer?.acceptedAt || !payment || !["belum-dibayar", "menunggu-verifikasi"].includes(payment.status)) throw new DomainRuleError("QRIS merchant belum tersedia untuk status ini.", 404)
 
   if (qrisConfig.blobUrl) {
-    // Proxy from Vercel Blob
-    const blobResponse = await fetch(qrisConfig.blobUrl)
-    if (!blobResponse.ok) throw new DomainRuleError("QRIS merchant tidak ditemukan.", 404)
-    response.setHeader("Content-Type", blobResponse.headers.get("content-type") || "image/png")
+    const result = await fetchBlobBuffer(qrisConfig.blobUrl)
+    if (!result) throw new DomainRuleError("QRIS merchant tidak ditemukan.", 404)
+    response.setHeader("Content-Type", result.contentType)
     response.setHeader("Cache-Control", "private, no-store")
-    const buffer = Buffer.from(await blobResponse.arrayBuffer())
-    response.send(buffer)
+    response.send(result.buffer)
   } else {
     response.setHeader("Content-Type", qrisConfig.contentType)
     response.setHeader("Cache-Control", "private, no-store")
@@ -235,11 +233,11 @@ app.get("/api/customer/orders/:id/qris", asyncRoute(async (request, response) =>
 app.get("/api/admin/qris", asyncRoute(async (request, response) => {
   await requireAdmin(request)
   if (qrisConfig.blobUrl) {
-    const blobResponse = await fetch(qrisConfig.blobUrl)
-    if (!blobResponse.ok) throw new DomainRuleError("QRIS merchant tidak ditemukan.", 404)
-    response.setHeader("Content-Type", blobResponse.headers.get("content-type") || "image/png")
+    const result = await fetchBlobBuffer(qrisConfig.blobUrl)
+    if (!result) throw new DomainRuleError("QRIS merchant tidak ditemukan.", 404)
+    response.setHeader("Content-Type", result.contentType)
     response.setHeader("Cache-Control", "private, no-store")
-    response.send(Buffer.from(await blobResponse.arrayBuffer()))
+    response.send(result.buffer)
   } else if (qrisConfig.configured) {
     response.setHeader("Content-Type", qrisConfig.contentType)
     response.setHeader("Cache-Control", "private, no-store")
