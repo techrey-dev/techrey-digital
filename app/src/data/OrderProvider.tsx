@@ -58,17 +58,31 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }
 
   if (snapshot.error) {
+    if (!userId && (pathname.startsWith("/akun/") || pathname.startsWith("/admin"))) {
+      return <OrderContext.Provider value={{ repository: orderRepository, runAction }}>{children}</OrderContext.Provider>
+    }
+    const isAuthError = snapshot.error.includes("masuk") || snapshot.error.includes("401") || snapshot.error.includes("izin")
     const retry = () => {
+      if (!userId) {
+        window.location.href = pathname.startsWith("/admin") ? "/admin/masuk" : "/masuk"
+        return
+      }
       if (pathname.startsWith("/akun/")) void orderRepository.loadAccountOrders(userId, true)
       else void orderRepository.loadAdmin(userId, true)
     }
     return (
       <main className="app-state">
         <span className="state-symbol">!</span>
-        <h1>Data belum bisa dibuka.</h1>
+        <h1>{isAuthError ? "Login Diperlukan." : "Data belum bisa dibuka."}</h1>
         <p>{snapshot.error}</p>
         <div style={{ display: "flex", gap: "12px", marginTop: "18px", flexWrap: "wrap", justifyContent: "center" }}>
-          <button className="button" onClick={retry}>Coba lagi</button>
+          {isAuthError || !userId ? (
+            <Link className="button" to={pathname.startsWith("/admin") ? "/admin/masuk" : "/masuk"}>
+              Masuk Sekarang
+            </Link>
+          ) : (
+            <button className="button" onClick={retry}>Coba lagi</button>
+          )}
           <button
             type="button"
             className="button button-ghost"
