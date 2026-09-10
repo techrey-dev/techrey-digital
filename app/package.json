@@ -1,0 +1,46 @@
+{
+  "name": "app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "node --no-warnings server.mjs --dev",
+    "typecheck": "tsc -b",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "node --no-warnings server.mjs",
+    "start": "node --no-warnings server.mjs",
+    "test": "vitest run",
+    "test:browser": "node scripts/browser-smoke.mjs"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "@vercel/blob": "^2.8.0",
+    "better-auth": "1.7.3",
+    "express": "^5.2.1",
+    "kysely": "^0.29.5",
+    "kysely-libsql": "^0.7.1",
+    "lucide-react": "^1.42.0",
+    "motion": "^13.2.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router": "^8.3.1",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "oxlint": "^1.79.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2",
+    "vitest": "4.1.11"
+  }
+}
