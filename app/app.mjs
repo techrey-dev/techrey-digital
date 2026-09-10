@@ -282,7 +282,7 @@ app.use((error, _request, response, _next) => {
   const status = error instanceof DomainRuleError || (suggestedStatus >= 400 && suggestedStatus < 500) ? (error.status || suggestedStatus) : 500
   if (status === 500) console.error(error)
   const message = status === 500
-    ? "Server mengalami kendala."
+    ? (error?.message || "Server mengalami kendala.")
     : error?.type === "entity.parse.failed"
       ? "JSON request tidak valid."
       : status === 413

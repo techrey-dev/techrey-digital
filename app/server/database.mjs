@@ -42,92 +42,103 @@ export class DatabaseConflictError extends Error {
   }
 }
 
+let initPromise = null
+export async function ensureDatabase() {
+  if (!initPromise) initPromise = initializeDatabase()
+  return initPromise
+}
+
 export async function initializeDatabase() {
   try {
-    await client.batch([
-      "PRAGMA journal_mode = WAL",
-      "PRAGMA foreign_keys = ON",
-      `CREATE TABLE IF NOT EXISTS orders (
-        id TEXT PRIMARY KEY,
-        data_json TEXT NOT NULL,
-        owner_user_id TEXT,
-        version INTEGER NOT NULL DEFAULT 1,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )`,
-      `CREATE TABLE IF NOT EXISTS counters (
-        name TEXT PRIMARY KEY,
-        value INTEGER NOT NULL
-      )`,
-    ], "write")
-
-    // Check and add columns if needed
-    const columns = await client.execute("PRAGMA table_info(orders)")
-    const columnNames = columns.rows.map((row) => row.name)
-    if (!columnNames.includes("owner_user_id")) {
-      await client.execute("ALTER TABLE orders ADD COLUMN owner_user_id TEXT")
+    if (dbUrl.startsWith("file:")) {
+      try { await client.execute("PRAGMA journal_mode = WAL") } catch {}
+      try { await client.execute("PRAGMA foreign_keys = ON") } catch {}
     }
-    if (!columnNames.includes("version")) {
-      await client.execute("ALTER TABLE orders ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
-    }
-    await client.execute("CREATE INDEX IF NOT EXISTS orders_owner_user_id ON orders(owner_user_id)")
 
-    // Sync counter
-    const existingOrders = await client.execute("SELECT id FROM orders WHERE id LIKE 'TD-%'")
-    const maximumOrderNumber = existingOrders.rows.reduce(
-      (max, row) => Math.max(max, Number(String(row.id).split("-")[1]) || 0), 0
-    )
-    await client.execute({
-      sql: "INSERT INTO counters (name, value) VALUES ('order', ?) ON CONFLICT(name) DO UPDATE SET value = MAX(value, excluded.value)",
-      args: [maximumOrderNumber],
-    })
+    await client.execute(`CREATE TABLE IF NOT EXISTS orders (
+      id TEXT PRIMARY KEY,
+      data_json TEXT NOT NULL,
+      owner_user_id TEXT,
+      version INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`)
+
+    await client.execute(`CREATE TABLE IF NOT EXISTS counters (
+      name TEXT PRIMARY KEY,
+      value INTEGER NOT NULL
+    )`)
+
+    try {
+      await client.execute("CREATE INDEX IF NOT EXISTS orders_owner_user_id ON orders(owner_user_id)")
+    } catch {}
+
+    try {
+      const existingOrders = await client.execute("SELECT id FROM orders WHERE id LIKE 'TD-%'")
+      const maximumOrderNumber = existingOrders.rows.reduce(
+        (max, row) => Math.max(max, Number(String(row.id).split("-")[1]) || 0), 0
+      )
+      await client.execute({
+        sql: "INSERT INTO counters (name, value) VALUES ('order', ?) ON CONFLICT(name) DO UPDATE SET value = MAX(value, excluded.value)",
+        args: [maximumOrderNumber],
+      })
+    } catch {}
   } catch (error) {
-    console.warn("Peringatan inisialisasi database:", error?.message || error)
+    console.error("Gagal inisialisasi tabel database:", error)
   }
 }
 
 function parseOrder(row) {
   if (!row) return undefined
-  const order = JSON.parse(row.data_json)
-  order.version = row.version
-  order.messages ??= []
-  order.files ??= []
-  order.offers ??= []
-  order.payments ??= []
-  order.revisions ??= []
-  order.events ??= []
-  const activeOffer = order.offers.at(-1)
-  for (const revision of order.revisions) revision.offerId ??= activeOffer?.id
-  for (const file of order.files) {
-    if (file.category !== "result") continue
-    const legacyResult = !file.offerId
-    file.offerId ??= activeOffer?.id
-    if (legacyResult && !file.publishedAt && ["hasil-dikirim", "selesai", "revisi"].includes(order.status)) file.publishedAt = file.createdAt
+  try {
+    const order = JSON.parse(row.data_json)
+    order.version = row.version
+    order.messages ??= []
+    order.files ??= []
+    order.offers ??= []
+    order.payments ??= []
+    order.revisions ??= []
+    order.events ??= []
+    const activeOffer = order.offers.at(-1)
+    for (const revision of order.revisions) revision.offerId ??= activeOffer?.id
+    for (const file of order.files) {
+      if (file.category !== "result") continue
+      const legacyResult = !file.offerId
+      file.offerId ??= activeOffer?.id
+      if (legacyResult && !file.publishedAt && ["hasil-dikirim", "selesai", "revisi"].includes(order.status)) file.publishedAt = file.createdAt
+    }
+    return order
+  } catch {
+    return undefined
   }
-  return order
 }
 
 export async function listOrders() {
+  await ensureDatabase()
   const result = await client.execute("SELECT data_json, version FROM orders ORDER BY created_at DESC")
-  return result.rows.map(parseOrder)
+  return result.rows.map(parseOrder).filter(Boolean)
 }
 
 export async function getOrder(id) {
+  await ensureDatabase()
   const result = await client.execute({ sql: "SELECT data_json, version FROM orders WHERE id = ?", args: [id] })
   return parseOrder(result.rows[0])
 }
 
 export async function listOrdersByOwner(ownerUserId) {
+  await ensureDatabase()
   const result = await client.execute({ sql: "SELECT data_json, version FROM orders WHERE owner_user_id = ? ORDER BY created_at DESC", args: [ownerUserId] })
-  return result.rows.map(parseOrder)
+  return result.rows.map(parseOrder).filter(Boolean)
 }
 
 export async function getOrderForOwner(id, ownerUserId) {
+  await ensureDatabase()
   const result = await client.execute({ sql: "SELECT data_json, version FROM orders WHERE id = ? AND owner_user_id = ?", args: [id, ownerUserId] })
   return parseOrder(result.rows[0])
 }
 
 export async function saveOrder(order) {
+  await ensureDatabase()
   const updatedAt = new Date().toISOString()
   const expectedVersion = Number.isInteger(order.version) ? order.version : undefined
   const next = structuredClone(order)
@@ -153,6 +164,7 @@ export async function saveOrder(order) {
 }
 
 export async function nextOrderId() {
+  await ensureDatabase()
   const result = await client.execute("UPDATE counters SET value = value + 1 WHERE name = 'order' RETURNING value")
   return "TD-" + String(result.rows[0].value).padStart(3, "0")
 }
