@@ -7,6 +7,7 @@ import { getOrder, getOrderForOwner, initializeDatabase, listOrders, listOrdersB
 import { aiConfig, publicRuntimeConfig, qrisConfig } from "./server/runtime-config.mjs"
 import { fetchBlobBuffer, readPrivateFile, removePrivateFile, storePrivateFile } from "./server/private-files.mjs"
 import { analyzeOrderWithAi } from "./server/ai-assistant.mjs"
+import { notifyCustomerOnWhatsApp } from "./server/whatsapp-notifier.mjs"
 
 try {
   await initializeDatabase()
@@ -257,7 +258,9 @@ app.post("/api/customer/orders/:id/actions", asyncRoute(async (request, response
 app.post("/api/admin/orders/:id/actions", asyncRoute(async (request, response) => {
   const session = await requireAdmin(request)
   const order = await requireOrder(request.params.id)
-  response.json({ order: await saveOrder(applyAdminAction(order, request.body?.action, request.body?.payload, session.user)) })
+  const updatedOrder = await saveOrder(applyAdminAction(order, request.body?.action, request.body?.payload, session.user))
+  const whatsappNotification = await notifyCustomerOnWhatsApp(updatedOrder, request.body?.action, request.body?.payload)
+  response.json({ order: updatedOrder, whatsappNotification })
 }))
 
 const aiRequests = new Map()

@@ -1,4 +1,4 @@
-import type { OrderSnapshot, OfferDraft, Order, OrderDraft, PaymentInstructions } from "./types"
+import type { OrderSnapshot, OfferDraft, Order, OrderDraft, PaymentInstructions, WhatsAppNotificationInfo } from "./types"
 
 export class RepositoryError extends Error {
   status?: number
@@ -129,12 +129,17 @@ export class OrderRepository {
 
   private async adminAction(id: string, action: AdminAction, payload?: unknown, message?: string) {
     const scope = this.scopeSequence
-    const result = await this.request<{ order: Order }>("/api/admin/orders/" + encodeURIComponent(id) + "/actions", {
+    const result = await this.request<{ order: Order; whatsappNotification?: WhatsAppNotificationInfo }>("/api/admin/orders/" + encodeURIComponent(id) + "/actions", {
       method: "POST", body: JSON.stringify({ action, payload }),
     })
     if (scope !== this.scopeSequence) return
     this.upsert(result.order)
+    this.publish({ lastWhatsAppNotification: result.whatsappNotification })
     this.message(message ?? "Perubahan disimpan.")
+  }
+
+  clearWhatsAppNotification = () => {
+    this.publish({ lastWhatsAppNotification: undefined })
   }
 
   private async customerAction(id: string, action: CustomerAction, payload?: unknown, message?: string) {

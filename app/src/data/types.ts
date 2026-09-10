@@ -139,9 +139,18 @@ export type OfferDraft = Pick<
   "amount" | "scope" | "deliverables" | "revisionLimit" | "revisionDeadline" | "dueAt"
 >
 
+export type WhatsAppNotificationInfo = {
+  phone: string
+  message: string
+  href: string
+  sentAutomatically: boolean
+}
+
 export type OrderSnapshot = {
   orders: Order[]
   loading: boolean
   error?: string
   lastMessage?: { id: number; tone: "success" | "error" | "info"; text: string }
+  lastWhatsAppNotification?: WhatsAppNotificationInfo
 }
+

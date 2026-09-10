@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ArrowRight, Code2, LogIn, LogOut, PackageSearch } from "lucide-react"
+import { ArrowRight, Code2, LogIn, LogOut, PackageSearch, Sparkles } from "lucide-react"
 import { Link, useSearchParams } from "react-router"
 import { PublicLayout, StatusPill } from "../components/ui"
 import { useOrderData } from "../data/OrderContext"
@@ -124,7 +124,46 @@ export function AccountOrdersPage() {
             </button>
           </div>
         </header>
-        {orders.length ? <div className="account-order-grid">{orders.map((order) => <Link className="account-order-card" to={`/akun/pesanan/${order.id}`} key={order.id}><div><small>{order.id} · {order.service}</small><h2>{order.title}</h2><p>Tenggat {witaDate(order.deadline)}</p></div><div><StatusPill status={order.status} /><strong>{rupiah(order.offers.at(-1)?.amount)}</strong><ArrowRight /></div></Link>)}</div> : <section className="panel account-empty"><PackageSearch /><h2>Belum ada pesanan.</h2><p>Setelah kebutuhan diajukan, status dan penawarannya akan muncul di halaman ini.</p><Link className="button" to="/pesan">Ajukan kebutuhan pertama</Link></section>}
+        {orders.length ? (
+          <div className="account-order-grid">
+            {orders.map((order) => {
+              const needsAttention = ["menunggu-persetujuan", "hasil-dikirim", "menunggu-pembayaran", "perlu-informasi"].includes(order.status)
+              return (
+                <Link className={`account-order-card${needsAttention ? " has-notification" : ""}`} to={`/akun/pesanan/${order.id}`} key={order.id}>
+                  <div>
+                    <small>{order.id} · {order.service}</small>
+                    <h2>{order.title}</h2>
+                    <p>Tenggat {witaDate(order.deadline)}</p>
+                    {needsAttention && (
+                      <span className="order-notification-badge">
+                        <Sparkles style={{ width: 12, height: 12 }} />
+                        {order.status === "menunggu-persetujuan"
+                          ? "Penawaran Masuk — Periksa Sekarang"
+                          : order.status === "hasil-dikirim"
+                          ? "Hasil Selesai — Siap Diunduh"
+                          : order.status === "menunggu-pembayaran"
+                          ? "Menunggu Pembayaran"
+                          : "Perlu Tanggapan Info"}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <StatusPill status={order.status} />
+                    <strong>{rupiah(order.offers.at(-1)?.amount)}</strong>
+                    <ArrowRight />
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        ) : (
+          <section className="panel account-empty">
+            <PackageSearch />
+            <h2>Belum ada pesanan.</h2>
+            <p>Setelah kebutuhan diajukan, status dan penawarannya akan muncul di halaman ini.</p>
+            <Link className="button" to="/pesan">Ajukan kebutuhan pertama</Link>
+          </section>
+        )}
       </main>
     </PublicLayout>
   )

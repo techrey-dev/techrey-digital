@@ -23,6 +23,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const session = authClient.useSession()
   const publicConfig = usePublicConfig()
+  const { orders } = useOrderData()
 
   const handleSignOut = async () => {
     await authClient.signOut()
@@ -30,6 +31,10 @@ export function PublicLayout({ children }: { children: ReactNode }) {
   }
 
   const user = session.data?.user
+  const attentionOrders = orders.filter((o) =>
+    ["menunggu-persetujuan", "hasil-dikirim", "menunggu-pembayaran", "perlu-informasi"].includes(o.status)
+  )
+  const notificationCount = user ? attentionOrders.length : 0
 
   useEffect(() => {
     if (!open) return
@@ -50,7 +55,14 @@ export function PublicLayout({ children }: { children: ReactNode }) {
           <Link to="/#layanan">Layanan</Link>
           <Link to="/#karya">Contoh karya</Link>
           <Link to="/#faq">FAQ</Link>
-          <Link to="/akun/pesanan">Pesanan Saya</Link>
+          <Link to="/akun/pesanan" className="nav-link-with-badge">
+            Pesanan Saya
+            {notificationCount > 0 && (
+              <span className="nav-notification-badge" title={`${notificationCount} pesanan ada pembaruan`}>
+                {notificationCount}
+              </span>
+            )}
+          </Link>
           {user && (
             <div className="nav-mobile-user">
               <span className="nav-mobile-user-name">Masuk sebagai: <strong>{user.name || user.email}</strong></span>
@@ -61,12 +73,21 @@ export function PublicLayout({ children }: { children: ReactNode }) {
           )}
         </nav>
         {!user && <Link className="mobile-login" to="/masuk" aria-label="Masuk ke akun"><LogIn /><span>Masuk</span></Link>}
+        {user && (
+          <Link className="mobile-login mobile-account-link" to="/akun/pesanan" aria-label="Buka Pesanan Saya">
+            <span className="user-avatar-initial">{(user.name || user.email || "U")[0].toUpperCase()}</span>
+            {notificationCount > 0 && <span className="mobile-badge-indicator">{notificationCount}</span>}
+          </Link>
+        )}
         <div className="header-actions">
           {user ? (
             <div className="header-user-menu">
               <Link to="/akun/pesanan" className="header-user-badge" title={`Akun: ${user.name || user.email}`}>
                 <span className="user-avatar-initial">{(user.name || user.email || "U")[0].toUpperCase()}</span>
                 <span className="user-display-name">{user.name || user.email}</span>
+                {notificationCount > 0 && (
+                  <span className="header-user-badge-dot" title={`${notificationCount} pesanan ada pembaruan`} />
+                )}
               </Link>
               <Link className="button button-small header-cta" to="/pesan">
                 Ajukan kebutuhan <ArrowUpRight />

@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react"
 import { Link, Outlet, useParams } from "react-router"
-import { AlertCircle, ArrowLeft, ArrowRight, Check, Clock3, Eye, FileText, LogOut, MessageCircle, RefreshCcw, Search, WalletCards } from "lucide-react"
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Clock3, ExternalLink, Eye, FileText, LogOut, MessageCircle, RefreshCcw, Search, WalletCards } from "lucide-react"
 import { AdminNav, StatusPill } from "../../components/ui"
 import { AdminAssistantPanel } from "../../components/AdminAssistantPanel"
 import { useOrderData } from "../../data/OrderContext"
@@ -160,7 +160,7 @@ export function AdminOrderDetailPage() {
 
 function AdminOrderDetail() {
   const { id = "" } = useParams()
-  const { orders, repository, runAction } = useOrderData()
+  const { orders, repository, runAction, lastWhatsAppNotification } = useOrderData()
   const order = orders.find((item) => item.id === id)
   const currentOffer = order?.offers.at(-1)
   const payment = currentOffer ? order?.payments.findLast((item) => item.offerId === currentOffer.id) : undefined
@@ -259,18 +259,64 @@ function AdminOrderDetail() {
     <div className="admin-page detail-page">
       <div className="detail-nav">
         <Link className="back-link" to="/admin/pesanan"><ArrowLeft /> Daftar pesanan</Link>
-        {waCustomerLink && (
-          <a
-            href={waCustomerLink}
-            target="_blank"
-            rel="noreferrer"
-            className="button button-small button-ghost wa-admin-nav-btn"
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-          >
-            <MessageCircle style={{ width: "15px", height: "15px", color: "#25d366" }} /> Chat Pelanggan ({order.whatsapp})
-          </a>
-        )}
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          {order.whatsapp && (
+            <a
+              href={`https://wa.me/${order.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(`Halo Kak *${order.customerName}*! Pembaruan pesanan *#${order.id} - ${order.title}* di Techrey Digital:\nStatus saat ini: *${workLabels[order.status]}*.\n\nCek progres pesanan di:\n👉 https://techrey-digital.vercel.app/akun/pesanan/${order.id}\n\nTerima kasih,\n*Techrey Digital*`)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="button button-small button-whatsapp"
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+              title="Kirim pesan notifikasi progres ke WhatsApp pelanggan"
+            >
+              <MessageCircle style={{ width: "15px", height: "15px" }} /> Kirim Update ke WA Pelanggan 💬
+            </a>
+          )}
+          {waCustomerLink && (
+            <a
+              href={waCustomerLink}
+              target="_blank"
+              rel="noreferrer"
+              className="button button-small button-ghost wa-admin-nav-btn"
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+            >
+              <MessageCircle style={{ width: "15px", height: "15px", color: "#25d366" }} /> Chat Biasa ({order.whatsapp})
+            </a>
+          )}
+        </div>
       </div>
+      {lastWhatsAppNotification && lastWhatsAppNotification.phone && (
+        <div className="admin-wa-notify-toast" role="status">
+          <div className="admin-wa-notify-content">
+            <MessageCircle style={{ color: "#25d366" }} />
+            <div>
+              <strong>
+                {lastWhatsAppNotification.sentAutomatically
+                  ? "Notifikasi otomatis telah dikirim ke WhatsApp pelanggan!"
+                  : "Pembaruan berhasil disimpan & siap dikirim ke WhatsApp pelanggan"}
+              </strong>
+              <small>Pelanggan: {order.customerName} ({lastWhatsAppNotification.phone})</small>
+            </div>
+          </div>
+          <div className="admin-wa-notify-actions">
+            <a
+              href={lastWhatsAppNotification.href}
+              target="_blank"
+              rel="noreferrer"
+              className="button button-small button-whatsapp"
+            >
+              {lastWhatsAppNotification.sentAutomatically ? "Buka Chat WhatsApp" : "Kirim WhatsApp Sekarang 💬"} <ExternalLink style={{ width: 14, height: 14 }} />
+            </a>
+            <button
+              type="button"
+              className="button button-small button-ghost"
+              onClick={() => repository.clearWhatsAppNotification()}
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
       <header className="admin-page-heading detail-heading"><div><span className="eyebrow">{order.id} / {order.service}</span><h1>{order.title}</h1><p>{order.customerName} · {witaDate(order.deadline)}</p></div><div className="detail-pills"><StatusPill status={order.status} /><StatusPill payment={payment?.status ?? "belum-ditagih"} /></div></header>
       <nav className="mobile-admin-jump" aria-label="Lompat ke bagian pesanan">
         <a href="#admin-payment">Bayar</a><a href="#admin-brief">Brief</a><a href="#admin-revision">Revisi</a><a href="#admin-assistant">AI</a><a href="#admin-progress">Progres</a>
