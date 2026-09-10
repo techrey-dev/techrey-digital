@@ -23,7 +23,10 @@ export const whatsappConfig = whatsappNumber.length >= 10
   : { configured: false }
 
 export const qrisConfig = {
-  configured: Boolean(qrisImagePath && existsSync(qrisImagePath) && (process.env.QRIS_MERCHANT_NAME || "").trim() && [".png", ".jpg", ".jpeg", ".webp"].includes(qrisExtension)),
+  configured: Boolean(
+    (qrisImagePath && existsSync(qrisImagePath) && (process.env.QRIS_MERCHANT_NAME || "").trim() && [".png", ".jpg", ".jpeg", ".webp"].includes(qrisExtension)) ||
+    (Boolean(process.env.QRIS_BLOB_URL) && (process.env.QRIS_MERCHANT_NAME || "").trim())
+  ),
   imagePath: qrisImagePath,
   contentType: qrisExtension === ".png" ? "image/png" : qrisExtension === ".webp" ? "image/webp" : "image/jpeg",
   merchantName: (process.env.QRIS_MERCHANT_NAME || "").trim(),
