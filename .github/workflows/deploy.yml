@@ -1,0 +1,37 @@
+name: Deploy Techrey Digital
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - ".github/workflows/deploy.yml"
+
+  workflow_dispatch:
+
+concurrency:
+  group: techrey-digital-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Production
+
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+      - techrey
+      - production
+
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Techrey Server
+        shell: bash
+        run: |
+          /home/rey/.local/bin/deploy-techrey-digital "$GITHUB_WORKSPACE/app"
