@@ -32,7 +32,7 @@ app.use((request, response, next) => {
   next()
 })
 
-app.all("/api/auth/*splat", toNodeHandler(auth))
+app.all(["/api/auth", "/api/auth/*splat"], toNodeHandler(auth))
 
 const writeRequests = new Map()
 app.use("/api", (request, _response, next) => {

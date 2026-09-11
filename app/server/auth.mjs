@@ -15,7 +15,12 @@ try {
   if (error?.code !== "ENOENT") throw error
 }
 
-export const authBaseUrl = process.env.BETTER_AUTH_URL || "http://127.0.0.1:5173"
+const vercelDomain = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL
+const autoBaseUrl = vercelDomain
+  ? `https://${vercelDomain.replace(/^https?:\/\//, "")}`
+  : (process.env.NODE_ENV === "production" || process.env.VERCEL ? "https://techrey-digital.vercel.app" : "http://127.0.0.1:5173")
+
+export const authBaseUrl = (process.env.BETTER_AUTH_URL || autoBaseUrl).replace(/\/$/, "")
 export const configuredProviders = {
   google: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
   github: Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET),
@@ -48,6 +53,9 @@ const trustedOrigins = [
   authBaseUrl,
   "http://127.0.0.1:5173",
   "http://localhost:5173",
+  "https://techrey-digital.vercel.app",
+  ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL.replace(/^https?:\/\//, "")}`] : []),
+  ...(process.env.VERCEL_PROJECT_PRODUCTION_URL ? [`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.replace(/^https?:\/\//, "")}`] : []),
   ...(process.env.TRUSTED_ORIGINS ? process.env.TRUSTED_ORIGINS.split(",").map((s) => s.trim()) : []),
 ]
 
