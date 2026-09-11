@@ -114,7 +114,7 @@ export function AccountOrdersPage() {
         <header className="account-heading">
           <div>
             <span className="eyebrow">PESANAN SAYA</span>
-            <h1>Halo, {session.data.user.name}.</h1>
+            <h1>Halo, {session.data.user.name || session.data.user.email?.split("@")[0] || "Pelanggan"}.</h1>
             <p>Semua kebutuhan yang diajukan dengan akun ini ({session.data.user.email}) tersimpan di sini.</p>
           </div>
           <div className="account-heading-actions">
