@@ -51,7 +51,7 @@ export function HomePage() {
           <motion.div className="hero-stage" initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.12 }}>
             <span className="stage-note">geser kursor / sentuh</span>
             <HeroExperience />
-            <span className="stage-caption"><Sparkles /> DIGITAL WORKBENCH / 01</span>
+            <span className="stage-caption"><Sparkles /> DIGITAL Techrey</span>
           </motion.div>
         </section>
 

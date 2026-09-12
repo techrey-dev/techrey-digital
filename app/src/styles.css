@@ -63,7 +63,9 @@ button:disabled { cursor: not-allowed; opacity: .48; transform: none !important;
 .header-user-badge { position: relative; }
 .header-user-badge-dot { position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; background: #ef4444; border: 2px solid white; animation: nav-notification-pulse 2s infinite ease-in-out; }
 .mobile-badge-indicator { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #ef4444; color: white; font-size: .62rem; font-weight: 800; margin-left: 4px; }
-.mobile-account-link { gap: 6px; }
+.mobile-account-link { position: relative; }
+.mobile-account-link .user-avatar-initial { flex: 0 0 26px; }
+.mobile-account-link .mobile-badge-indicator { position: absolute; top: -5px; right: -5px; margin: 0; border: 2px solid white; min-width: 20px; height: 20px; }
 .order-notification-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 6px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: .72rem; font-weight: 750; margin-top: 8px; }
 .account-order-card.has-notification { border-left: 4px solid var(--blue); background: linear-gradient(to right, #f8faff, #ffffff); }
 
@@ -287,11 +289,13 @@ input::placeholder, textarea::placeholder { color: #8e9aae; }
 .account-orders { min-width: 0; padding-block: 30px 80px; }
 .account-heading { margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
 .account-heading h1 { margin: 10px 0 5px; font-size: 2.4rem; letter-spacing: -.05em; }
+.account-heading > div { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .account-heading p { margin: 0; color: var(--muted); font-size: .9rem; }
 .account-heading-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .account-heading-actions .button-ghost { border: 1px solid #cad4e4; }
 .account-heading-actions .button-ghost:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
-.account-order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+.account-order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 18px; }
+.account-order-card { min-width: 0; overflow-wrap: anywhere; }
 .account-order-card { padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: white; box-shadow: 0 4px 0 #e8edf5; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; transition: all .18s ease; }
 .account-order-card:hover { border-color: var(--blue); transform: translateY(-2px); box-shadow: 0 8px 20px #2854ff15; }
 .account-order-card small { color: var(--muted); font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
@@ -619,7 +623,8 @@ input::placeholder, textarea::placeholder { color: #8e9aae; }
   .site-header nav { display: none; position: absolute; z-index: 20; top: 70px; left: 0; right: 0; padding: 18px; border: 1px solid var(--line); border-radius: 13px; background: white; box-shadow: 0 16px 35px #101a3422; }
   .site-header nav.nav-open { display: grid; gap: 14px; }
   .header-cta, .header-actions { display: none; }
-  .mobile-login { display: inline-flex; min-height: 38px; padding: 8px 11px; border: 1px solid #cbd6eb; border-radius: 10px; align-items: center; gap: 6px; color: var(--blue); background: white; font-size: .76rem; font-weight: 800; }
+  .mobile-login { display: inline-flex; flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 8px 11px; border: 1px solid #cbd6eb; border-radius: 10px; align-items: center; justify-content: center; gap: 6px; color: var(--blue); background: white; font-size: .76rem; font-weight: 800; }
+  .mobile-account-link { width: 44px; height: 44px; padding: 0; }
   .mobile-login svg { width: 16px; }
   .nav-mobile-user { display: flex; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--line); flex-direction: column; gap: 8px; }
   .nav-mobile-user-name { font-size: .82rem; color: var(--muted); }
@@ -766,8 +771,8 @@ input::placeholder, textarea::placeholder { color: #8e9aae; }
 
 @media (max-width: 430px) {
   .site-header .brand img { width: 108px; }
-  .mobile-login span { display: none; }
-  .mobile-login { width: 38px; justify-content: center; }
+  .mobile-login-label { display: none; }
+  .mobile-login { width: 44px; }
   .hero h1 { font-size: 2.72rem; }
   .hero-copy > p { font-size: .96rem; }
   .hero-actions .button { width: 100%; }

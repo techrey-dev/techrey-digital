@@ -109,6 +109,7 @@ async function waitFor(expression, label, attempts = 100) {
 
 try {
   await command("Runtime.enable")
+  await command("Page.enable")
   const unknownApi = await fetch(appUrl + "/api/route-that-does-not-exist")
   if (unknownApi.status !== 404 || !unknownApi.headers.get("content-type")?.includes("application/json")) throw new Error("API 404 tidak valid.")
   const invalidJson = await fetch(appUrl + "/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{broken" })
@@ -198,9 +199,55 @@ try {
     }
     adminMobile.push(layout)
   }
+  // Mock authenticated reads only in this browser; no customer data is changed.
+  const fixture = await command("Page.addScriptToEvaluateOnNewDocument", { source: `
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      const path = new URL(input instanceof Request ? input.url : input, location.origin).pathname;
+      let body;
+      if (path === '/api/auth/get-session') body = {
+        user: { id: 'mobile-test', name: 'PelangganDenganNamaSangatPanjangUntukUjiMobile', email: 'pelanggan.mobile@example.com', emailVerified: true },
+        session: { id: 'mobile-session', userId: 'mobile-test', expiresAt: '2099-01-01T00:00:00.000Z' }
+      };
+      if (path === '/api/customer/orders') body = { orders: [{
+        id: 'TD-MOBILE', title: 'JudulPesananTanpaSpasiYangSangatPanjangUntukUjiMobile', service: 'Website',
+        status: 'menunggu-pembayaran', deadline: '2026-10-01T00:00:00.000Z', offers: []
+      }] };
+      return body ? Promise.resolve(new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } })) : originalFetch(input, init);
+    };
+  ` })
+  const accountMobile = []
+  for (const width of [320, 390, 430, 600, 760]) {
+    await command("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: true })
+    await command("Page.navigate", { url: appUrl + "/akun/pesanan" })
+    await waitFor("document.querySelector('.mobile-account-link .mobile-badge-indicator')", `akun mobile ${width}px`)
+    const layout = await evaluate(`(() => {
+      const link = document.querySelector('.mobile-account-link');
+      const avatar = link.querySelector('.user-avatar-initial');
+      const badge = link.querySelector('.mobile-badge-indicator');
+      const rect = link.getBoundingClientRect();
+      const card = document.querySelector('.account-order-card').getBoundingClientRect();
+      return { width: innerWidth, scrollWidth: document.documentElement.scrollWidth,
+        avatarVisible: avatar.getBoundingClientRect().width > 0,
+        badgeVisible: badge.getBoundingClientRect().width > 0,
+        touchWidth: rect.width, touchHeight: rect.height,
+        cardRight: card.right, x: rect.x + rect.width / 2, y: rect.y + rect.height / 2,
+        hit: link.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)) };
+    })()`)
+    if (layout.scrollWidth > width || !layout.avatarVisible || !layout.badgeVisible || !layout.hit || layout.touchWidth < 44 || layout.touchHeight < 44 || layout.cardRight > width) {
+      throw new Error("Tombol akun atau daftar pesanan mobile gagal: " + JSON.stringify(layout))
+    }
+    await command("Page.navigate", { url: appUrl + "/" })
+    await waitFor("document.querySelector('.mobile-account-link')", "tombol akun di beranda")
+    await command("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: layout.x, y: layout.y }] })
+    await command("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] })
+    await waitFor("location.pathname === '/akun/pesanan' && document.querySelector('.account-order-card')", "navigasi sentuh akun")
+    accountMobile.push(layout)
+  }
+  await command("Page.removeScriptToEvaluateOnNewDocument", { identifier: fixture.identifier })
   if (browserErrors.length) throw new Error("Error JavaScript browser: " + browserErrors.join("\n"))
 
-  console.log(JSON.stringify({ api: { unknown: unknownApi.status, invalidJson: invalidJson.status }, desktop, mobile, menu, keyboard, customerGuard, adminGuard, formLayouts, adminMobile, browserErrors }, null, 2))
+  console.log(JSON.stringify({ api: { unknown: unknownApi.status, invalidJson: invalidJson.status }, desktop, mobile, menu, keyboard, customerGuard, adminGuard, formLayouts, adminMobile, accountMobile, browserErrors }, null, 2))
 } finally {
   socket.close()
   await stopProcess(chrome)

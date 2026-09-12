@@ -72,7 +72,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
             </div>
           )}
         </nav>
-        {!user && <Link className="mobile-login" to="/masuk" aria-label="Masuk ke akun"><LogIn /><span>Masuk</span></Link>}
+        {!user && <Link className="mobile-login" to="/masuk" aria-label="Masuk ke akun"><LogIn /><span className="mobile-login-label">Masuk</span></Link>}
         {user && (
           <Link className="mobile-login mobile-account-link" to="/akun/pesanan" aria-label="Buka Pesanan Saya">
             <span className="user-avatar-initial">{(user.name || user.email || "U")[0].toUpperCase()}</span>
