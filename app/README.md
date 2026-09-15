@@ -67,6 +67,43 @@ Salin `.env.example` menjadi `.env`. Jangan menyimpan `.env` ke Git.
 - Untuk DANA Bisnis, buka profil Bisnis dan gunakan gambar QRIS resmi yang sudah disetujui. Setelah pelanggan menandai pembayaran, cocokkan nominal, status berhasil, dan nomor referensi pada **Riwayat Transaksi** DANA Bisnis sebelum verifikasi admin.
 - Jangan pernah memasukkan PIN, OTP, password, atau kredensial login DANA ke aplikasi ini.
 
+## Penyimpanan privat di Vercel
+
+Buat Vercel Blob store berjenis **Private**, lalu pasang tokennya sebagai
+`PRIVATE_BLOB_READ_WRITE_TOKEN`. Token `BLOB_READ_WRITE_TOKEN` dapat tetap menunjuk
+ke store Public lama untuk QRIS. Jika hanya memakai satu store Private, token
+`BLOB_READ_WRITE_TOKEN` juga dapat digunakan untuk lampiran. Store Public tidak
+dapat menerima upload dengan `access: "private"`; gunakan store Private baru.
+
+Upload baru divalidasi di server (ekstensi, MIME, signature format utama, maksimum
+10 MB; TXT/CSV UTF-8). Pemeriksaan signature bukan pemindaian malware. URL storage
+tidak dikirim dalam respons pesanan pelanggan; unduhan menggunakan endpoint dengan
+pemeriksaan sesi. Vercel tanpa token storage menolak upload, bukan menyimpan ke disk
+sementara.
+
+File yang sudah diunggah ke store Public tetap publik sampai dimigrasikan. Setelah
+kedua token dan database tujuan dikonfigurasi, cadangkan database dan jalankan:
+
+```bash
+node scripts/migrate-private-files.mjs
+node scripts/migrate-private-files.mjs --apply
+```
+
+Perintah pertama hanya mencantumkan ID file yang akan dipindahkan. Perintah kedua
+menyalin file ke store Private, menyimpan URL baru, lalu menghapus salinan Public.
+Jika terhenti, jalankan ulang; penanda pembersihan tersimpan di database. Jalankan
+saat admin tidak mengedit pesanan untuk menghindari konflik versi. QRIS tidak ikut
+dipindahkan. Penghapusan URL lama mengikuti invalidasi cache CDN Vercel.
+
+## Persetujuan dan rekonsiliasi pembayaran
+
+Setiap perubahan penawaran menaikkan versinya. Persetujuan pelanggan wajib membawa
+ID dan versi penawaran yang sedang dilihat; server menolak versi lama dengan 409.
+Pembatalan pesanan diblokir selama ada pembayaran menunggu verifikasi. Admin harus
+memverifikasi dana yang masuk (dan mencatat refund sebelum membatalkan), atau memakai
+**Transaksi tidak ditemukan di merchant** untuk mencatat alasan penolakan konfirmasi.
+Pelanggan dapat melihat alasan tersebut dan mengonfirmasi ulang pembayaran.
+
 ## Asisten Techrey
 
 Asisten hanya tersedia bagi admin. Request dilakukan oleh server melalui OpenAI Responses API dengan structured output dan `store: false`. Nama pelanggan, WhatsApp, dan isi file tidak dikirim. Judul, brief, tenggat, anggaran, serta metadata nama/ukuran lampiran dikirim saat admin menekan tombol analisis. Hasil selalu berlabel draf; AI tidak menentukan harga dan tidak menyimpan penawaran otomatis.

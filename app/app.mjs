@@ -85,9 +85,9 @@ async function requireOwnedOrder(id, userId) {
 function customerView(order) {
   const view = structuredClone(order)
   delete view.ownerUserId
-  view.files = (view.files ?? []).filter((file) => file.category !== "result" || file.publishedAt)
+  view.files = (view.files ?? []).filter((file) => file.category !== "result" || file.publishedAt).map(({ blobUrl: _blobUrl, legacyPublicBlobUrl: _legacyPublicBlobUrl, ...file }) => file)
   view.events = (view.events ?? []).map(({ actorId: _actorId, ...event }) => event)
-  view.payments = (view.payments ?? []).map(({ verifiedBy: _verifiedBy, refundedBy: _refundedBy, merchantReference: _merchantReference, refundReference: _refundReference, ...payment }) => payment)
+  view.payments = (view.payments ?? []).map(({ verifiedBy: _verifiedBy, rejectedBy: _rejectedBy, refundedBy: _refundedBy, merchantReference: _merchantReference, refundReference: _refundReference, ...payment }) => payment)
   view.offers ??= []
   view.revisions ??= []
   view.messages ??= []

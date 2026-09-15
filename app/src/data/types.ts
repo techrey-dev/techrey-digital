@@ -65,6 +65,9 @@ export type Payment = {
   markedAt?: string
   verifiedAt?: string
   verifiedBy?: string
+  rejectedAt?: string
+  rejectedBy?: string
+  rejectionReason?: string
   merchantReference?: string
   cancelledAt?: string
   refundReference?: string
@@ -153,4 +156,3 @@ export type OrderSnapshot = {
   lastMessage?: { id: number; tone: "success" | "error" | "info"; text: string }
   lastWhatsAppNotification?: WhatsAppNotificationInfo
 }
-

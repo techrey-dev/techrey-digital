@@ -111,7 +111,7 @@ export function applyAdminAction(order, action, payload = {}, actor = {}) {
     if (activeOffer?.acceptedAt) throw new DomainRuleError("Penawaran yang disetujui tidak dapat ditimpa. Buat versi baru.")
     if (!["ditinjau", "menunggu-persetujuan"].includes(next.status)) throw new DomainRuleError("Tandai brief sudah ditinjau sebelum membuat penawaran.")
     validateOffer(payload)
-    const version = activeOffer?.version ?? next.offers.length + 1
+    const version = (activeOffer?.version ?? 0) + 1
     const offer = {
       id: activeOffer?.id ?? uid("offer"),
       version,
@@ -146,6 +146,14 @@ export function applyAdminAction(order, action, payload = {}, actor = {}) {
     payment.verifiedBy = adminIdentity
     next.status = "antrean"
     next.events.unshift(makeEvent("admin", "Pembayaran dicocokkan dengan transaksi merchant dan pesanan masuk antrean.", adminIdentity))
+  } else if (action === "reject-payment") {
+    if (!payment || payment.status !== "menunggu-verifikasi" || next.status !== "menunggu-pembayaran") throw new DomainRuleError("Tidak ada pembayaran yang menunggu verifikasi.")
+    const reason = validText(requirePayload(payload).reason, "Hasil pemeriksaan transaksi", 10, 1000)
+    payment.status = "belum-dibayar"
+    payment.rejectedAt = now()
+    payment.rejectedBy = adminIdentity
+    payment.rejectionReason = reason
+    next.events.unshift(makeEvent("admin", `Konfirmasi pembayaran ditolak setelah pemeriksaan merchant: ${reason}`, adminIdentity))
   } else if (action === "update-progress") {
     requirePayload(payload)
     if (payload.status === "selesai") throw new DomainRuleError("Pesanan diselesaikan oleh pelanggan setelah menerima hasil.")
@@ -180,6 +188,7 @@ export function applyAdminAction(order, action, payload = {}, actor = {}) {
     if (!["ditolak", "dibatalkan"].includes(payload.status)) throw new DomainRuleError("Status penutupan tidak valid.")
     if (!ensureTransition(next.status, payload.status)) return next
     const reason = validText(payload.reason, "Alasan", 5, 500)
+    if (next.payments.some((item) => item.status === "menunggu-verifikasi")) throw new DomainRuleError("Periksa pembayaran yang menunggu verifikasi sebelum menutup pesanan. Verifikasi transaksi yang masuk atau tolak konfirmasi jika transaksi tidak ditemukan.")
     const paidPayments = next.payments.filter((item) => item.status === "dibayar")
     if (paidPayments.length) {
       const refundReference = validText(payload.refundReference, "Referensi pengembalian dana", 4, 120)
@@ -190,7 +199,7 @@ export function applyAdminAction(order, action, payload = {}, actor = {}) {
         paid.refundedBy = adminIdentity
       }
     }
-    for (const pending of next.payments.filter((item) => ["belum-dibayar", "menunggu-verifikasi"].includes(item.status))) {
+    for (const pending of next.payments.filter((item) => item.status === "belum-dibayar")) {
       pending.status = "dibatalkan"
       pending.cancelledAt = now()
     }
@@ -212,6 +221,7 @@ export function applyCustomerAction(order, action, payload = {}, actor = {}) {
 
   if (action === "accept-offer") {
     if (!offer) throw new DomainRuleError("Belum ada penawaran yang dapat disetujui.")
+    if (payload?.offerId !== offer.id || payload?.offerVersion !== offer.version) throw new DomainRuleError("Penawaran berubah. Muat ulang dan periksa rincian terbaru sebelum menyetujui.", 409)
     if (offer.acceptedAt) return next
     if (next.status !== "menunggu-persetujuan") throw new DomainRuleError("Penawaran tidak dapat disetujui pada tahap ini.")
     offer.acceptedAt = now()

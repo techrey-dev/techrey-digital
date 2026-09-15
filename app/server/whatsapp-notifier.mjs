@@ -101,7 +101,7 @@ Terima kasih!
 
 Pembaruan pesanan Anda di Techrey Digital:
 
-📌 *#${order.id} - {order.title}*
+📌 *#${order.id} - ${order.title}*
 Status: *Sedang Dikerjakan oleh Tim*
 
 Progres pesanan dapat Anda pantau kapan saja di:

@@ -176,6 +176,8 @@ function AdminOrderDetail() {
   const [merchantReference, setMerchantReference] = useState("")
   const [paymentChecked, setPaymentChecked] = useState(false)
   const [verifyingPayment, setVerifyingPayment] = useState(false)
+  const [paymentRejectionReason, setPaymentRejectionReason] = useState("")
+  const [noTransactionChecked, setNoTransactionChecked] = useState(false)
   const [saving, setSaving] = useState(false)
   const [localError, setLocalError] = useState("")
   const [assistantApplied, setAssistantApplied] = useState(false)
@@ -244,8 +246,17 @@ function AdminOrderDetail() {
     if (await runAction(() => repository.requestInformation(order.id, informationQuestion.trim()))) setInformationQuestion("")
   }
 
+  const rejectPayment = async () => {
+    if (!noTransactionChecked || paymentRejectionReason.trim().length < 10 || verifyingPayment) return
+    setVerifyingPayment(true)
+    const ok = await runAction(() => repository.rejectPayment(order.id, paymentRejectionReason.trim()))
+    setVerifyingPayment(false)
+    if (ok) { setPaymentRejectionReason(""); setNoTransactionChecked(false); setPaymentChecked(false) }
+  }
+
   const closeOrder = async (event: FormEvent) => {
     event.preventDefault()
+    if (order.payments.some((item) => item.status === "menunggu-verifikasi")) { setLocalError("Selesaikan pemeriksaan pembayaran sebelum menutup pesanan."); return }
     if (closeReason.trim().length < 5) { setLocalError("Alasan penutupan minimal 5 karakter."); return }
     if (refundableAmount > 0 && refundReference.trim().length < 4) { setLocalError("Catat referensi pengembalian dana sebelum membatalkan pesanan berbayar."); return }
     setLocalError("")
@@ -505,6 +516,13 @@ function AdminOrderDetail() {
               <label className="payment-confirmation"><input type="checkbox" checked={paymentChecked} onChange={(event) => setPaymentChecked(event.target.checked)} /><span>Saya sudah mencocokkan nominal dan status transaksi.</span></label>
               <button type="button" className="button button-wide" disabled={!paymentChecked || merchantReference.trim().length < 4 || verifyingPayment} onClick={() => void verifyPayment()}>{verifyingPayment ? "Memverifikasi…" : "Verifikasi & masukkan ke antrean"} <Check /></button>
               <small className="payment-action-note">Tindakan ini menyimpan referensi transaksi dan mengubah status pekerjaan menjadi Antrean.</small>
+              <details className="admin-form">
+                <summary>Transaksi tidak ditemukan di merchant</summary>
+                <label htmlFor="paymentRejectionReason">Catatan pemeriksaan untuk pelanggan</label>
+                <textarea id="paymentRejectionReason" rows={3} maxLength={1000} value={paymentRejectionReason} onChange={(event) => setPaymentRejectionReason(event.target.value)} />
+                <label className="payment-confirmation"><input type="checkbox" checked={noTransactionChecked} onChange={(event) => setNoTransactionChecked(event.target.checked)} /><span>Saya sudah memeriksa riwayat merchant dan memastikan dana belum masuk.</span></label>
+                <button type="button" className="button button-ghost button-small" disabled={!noTransactionChecked || paymentRejectionReason.trim().length < 10 || verifyingPayment} onClick={() => void rejectPayment()}>Tolak konfirmasi pembayaran</button>
+              </details>
             </> : payment?.status === "belum-dibayar" ? <div className="inline-alert warning"><Clock3 /><p><strong>Menunggu pelanggan membayar</strong><span>Belum ada yang perlu dilakukan. Tombol verifikasi muncul setelah pelanggan menekan “Saya sudah membayar”.</span></p></div> : payment?.status === "dibayar" ? <div className="payment-verified"><Check /><div><strong>Sudah dicocokkan</strong><span>Referensi: {payment.merchantReference || "—"}</span><small>{payment.verifiedAt ? witaDate(payment.verifiedAt) : "Waktu verifikasi tidak tersedia"} · {payment.verifiedBy || "Admin"}</small></div></div> : payment?.status === "dikembalikan" ? <div className="inline-alert positive"><Check /><p><strong>Dana sudah dikembalikan</strong><span>Referensi: {payment.refundReference || "tidak tersedia"}</span></p></div> : payment?.status === "dibatalkan" ? <div className="inline-alert"><AlertCircle /><p><strong>Tagihan dibatalkan</strong><span>Tidak ada pembayaran aktif untuk penawaran ini.</span></p></div> : <div className="inline-alert"><AlertCircle /><p><strong>Belum ada tagihan aktif</strong><span>Tagihan dibuat otomatis setelah pelanggan menyetujui penawaran.</span></p></div>}
           </section>
           {(order.messages ?? []).length > 0 && <section className="admin-card detail-section"><div className="admin-card-heading"><div><span>PERCAKAPAN</span><h2>Informasi tambahan</h2></div></div><ul className="revision-list">{(order.messages ?? []).map((message) => <li key={message.id}><strong>{message.actor === "admin" ? "Admin" : "Pelanggan"}</strong><p>{message.text}</p><small>{witaDate(message.createdAt)}</small></li>)}</ul></section>}
@@ -512,6 +530,7 @@ function AdminOrderDetail() {
           {!['selesai', 'ditolak', 'dibatalkan'].includes(order.status) && (
             <form id="admin-close" className="admin-card detail-section admin-form" onSubmit={(event) => void closeOrder(event)}>
               <div className="admin-card-heading"><div><span>PENUTUPAN</span><h2>Tolak atau batalkan</h2></div><AlertCircle /></div>
+              {order.payments.some((item) => item.status === "menunggu-verifikasi") && <p className="form-error">Selesaikan pemeriksaan pembayaran di bagian Pembayaran sebelum menutup pesanan.</p>}
               <label htmlFor="closeStatus">Tindakan</label>
               <select id="closeStatus" value={closeStatus} onChange={(event) => setCloseStatus(event.target.value as "ditolak" | "dibatalkan")}>
                 {['diajukan', 'ditinjau'].includes(order.status) && <option value="ditolak">Tolak pesanan</option>}

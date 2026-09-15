@@ -13,11 +13,47 @@ const offer = {
 }
 
 describe("aturan alur pesanan di server", () => {
+  it("menolak persetujuan harga atau lingkup yang sudah berubah", () => {
+    const reviewed = applyAdminAction(structuredClone(seedOrders[0]), "mark-reviewed")
+    const shown = applyAdminAction(reviewed, "save-offer", offer)
+    const consent = { offerId: shown.offers[0].id, offerVersion: shown.offers[0].version }
+    for (const changes of [{ amount: offer.amount + 100000 }, { scope: "Lingkup baru yang perlu disetujui kembali." }]) {
+      const changed = applyAdminAction(shown, "save-offer", { ...offer, ...changes })
+      expect(() => applyCustomerAction(changed, "accept-offer", consent)).toThrow("Penawaran berubah")
+      expect(changed.payments).toHaveLength(0)
+      expect(changed.offers[0].version).toBe(consent.offerVersion + 1)
+    }
+    expect(() => applyCustomerAction(shown, "accept-offer")).toThrow("Penawaran berubah")
+    expect(() => applyCustomerAction(shown, "accept-offer", { ...consent, offerId: "other" })).toThrow("Penawaran berubah")
+  })
+
+  it("memblokir pembatalan sampai transaksi diperiksa, termasuk jika referensi refund dikirim", () => {
+    const pending = structuredClone(seedOrders[1])
+    pending.payments[0].status = "menunggu-verifikasi"
+    expect(() => applyAdminAction(pending, "close-order", { status: "dibatalkan", reason: "Tidak jadi melanjutkan.", refundReference: "REFUND-001" })).toThrow("Periksa pembayaran")
+    const paid = applyAdminAction(pending, "verify-payment", { merchantReference: "QRIS-001" })
+    expect(() => applyAdminAction(paid, "close-order", { status: "dibatalkan", reason: "Tidak jadi melanjutkan." })).toThrow("Referensi pengembalian dana")
+    const closed = applyAdminAction(paid, "close-order", { status: "dibatalkan", reason: "Tidak jadi melanjutkan.", refundReference: "REFUND-001" })
+    expect(closed.payments[0].status).toBe("dikembalikan")
+  })
+
+  it("mencatat transaksi tidak ditemukan sebelum mengizinkan pembatalan atau konfirmasi ulang", () => {
+    const pending = structuredClone(seedOrders[1])
+    pending.payments[0].status = "menunggu-verifikasi"
+    expect(() => applyAdminAction(pending, "reject-payment", { reason: "" })).toThrow("Hasil pemeriksaan")
+    const rejected = applyAdminAction(pending, "reject-payment", { reason: "Transaksi tidak ada di riwayat merchant." }, { email: "admin@example.com" })
+    expect(rejected.payments[0]).toMatchObject({ status: "belum-dibayar", rejectedBy: "admin@example.com", rejectionReason: "Transaksi tidak ada di riwayat merchant." })
+    expect(rejected.payments[0].rejectedAt).toBeTruthy()
+    expect(applyCustomerAction(rejected, "mark-payment-attempt").payments[0].status).toBe("menunggu-verifikasi")
+    expect(applyAdminAction(rejected, "close-order", { status: "dibatalkan", reason: "Tidak jadi melanjutkan." }).status).toBe("dibatalkan")
+    expect(() => applyAdminAction(structuredClone(seedOrders[2]), "reject-payment", { reason: "Transaksi tidak ditemukan." })).toThrow("Tidak ada pembayaran")
+  })
+
   it("menjalankan alur utama sampai revisi", () => {
     let order = structuredClone(seedOrders[0])
     order = applyAdminAction(order, "mark-reviewed")
     order = applyAdminAction(order, "save-offer", offer)
-    order = applyCustomerAction(order, "accept-offer")
+    order = applyCustomerAction(order, "accept-offer", { offerId: order.offers.at(-1).id, offerVersion: order.offers.at(-1).version })
     order = applyCustomerAction(order, "mark-payment-attempt")
     order = applyAdminAction(order, "verify-payment", { merchantReference: "QRIS-TEST-001" }, { email: "admin@example.com" })
     order = applyAdminAction(order, "update-progress", { status: "dikerjakan" })
@@ -36,7 +72,7 @@ describe("aturan alur pesanan di server", () => {
   it("menolak pengerjaan sebelum pembayaran terverifikasi", () => {
     let order = applyAdminAction(structuredClone(seedOrders[0]), "mark-reviewed")
     order = applyAdminAction(order, "save-offer", offer)
-    order = applyCustomerAction(order, "accept-offer")
+    order = applyCustomerAction(order, "accept-offer", { offerId: order.offers.at(-1).id, offerVersion: order.offers.at(-1).version })
     expect(() => applyAdminAction(order, "update-progress", { status: "dikerjakan" })).toThrow(DomainRuleError)
   })
 
@@ -48,8 +84,8 @@ describe("aturan alur pesanan di server", () => {
   it("tidak menggandakan pembayaran saat persetujuan diulang", () => {
     let order = applyAdminAction(structuredClone(seedOrders[0]), "mark-reviewed")
     order = applyAdminAction(order, "save-offer", offer)
-    order = applyCustomerAction(order, "accept-offer")
-    order = applyCustomerAction(order, "accept-offer")
+    order = applyCustomerAction(order, "accept-offer", { offerId: order.offers.at(-1).id, offerVersion: order.offers.at(-1).version })
+    order = applyCustomerAction(order, "accept-offer", { offerId: order.offers.at(-1).id, offerVersion: order.offers.at(-1).version })
     expect(order.payments).toHaveLength(1)
     expect(order.payments[0].amount).toBe(offer.amount)
     expect(order.payments[0].offerId).toBe(order.offers[0].id)

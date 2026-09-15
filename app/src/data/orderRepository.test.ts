@@ -13,6 +13,12 @@ const deferred = () => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe("sinkronisasi pesanan", () => {
+  it("mengirim identitas penawaran yang dilihat pelanggan", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ order: order("TD-1") })))
+    vi.stubGlobal("fetch", fetchMock)
+    await new OrderRepository().acceptOffer("TD-1", { id: "offer-shown", version: 3 })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ action: "accept-offer", payload: { offerId: "offer-shown", offerVersion: 3 } })
+  })
   it("respons lama tidak menimpa hasil refresh terbaru", async () => {
     const slow = deferred()
     vi.stubGlobal("fetch", vi.fn().mockReturnValueOnce(slow.promise).mockResolvedValueOnce(response([order("baru")])))
@@ -45,7 +51,7 @@ describe("sinkronisasi pesanan", () => {
     const repository = new OrderRepository()
     await repository.loadAccountOrders("A")
     const refresh = repository.refreshAccountOrders("A")
-    await repository.acceptOffer("TD-1")
+    await repository.acceptOffer("TD-1", { id: "offer-1", version: 1 })
     slow.resolve(response([order("TD-1")]))
     await refresh
     expect(repository.getSnapshot().orders[0].status).toBe("menunggu-pembayaran")
@@ -56,7 +62,7 @@ describe("sinkronisasi pesanan", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(response([order("TD-1")])).mockReturnValueOnce(slow.promise))
     const repository = new OrderRepository()
     await repository.loadAccountOrders("A")
-    const action = repository.acceptOffer("TD-1")
+    const action = repository.acceptOffer("TD-1", { id: "offer-1", version: 1 })
     repository.prepareEmpty()
     slow.resolve(new Response(JSON.stringify({ order: order("TD-1") })))
     await action

@@ -169,9 +169,10 @@ function CustomerOrderDetail() {
   }
 
   const handleAcceptOffer = async () => {
+    if (!offer) return
     setActionPending("accept-offer")
     try {
-      await runAction(() => repository.acceptOffer(order.id))
+      await runAction(() => repository.acceptOffer(order.id, offer))
     } finally {
       setActionPending(null)
     }
@@ -725,6 +726,9 @@ function CustomerOrderDetail() {
                 <p>Tagihan baru dibuat setelah penawaran disetujui.</p>
               )}
 
+              {payment?.status === "belum-dibayar" && payment.rejectionReason && (
+                <div className="inline-alert warning"><AlertCircle /><p><strong>Konfirmasi pembayaran belum cocok</strong><span>{payment.rejectionReason}</span></p></div>
+              )}
               {payment?.status === "belum-dibayar" && currentPaymentInstructions && (
                 <>
                   <div className="inline-alert warning">

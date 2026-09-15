@@ -1,4 +1,4 @@
-import type { OrderSnapshot, OfferDraft, Order, OrderDraft, PaymentInstructions, WhatsAppNotificationInfo } from "./types"
+import type { OrderSnapshot, Offer, OfferDraft, Order, OrderDraft, PaymentInstructions, WhatsAppNotificationInfo } from "./types"
 
 export class RepositoryError extends Error {
   status?: number
@@ -6,7 +6,7 @@ export class RepositoryError extends Error {
 }
 
 type CustomerAction = "accept-offer" | "mark-payment-attempt" | "request-revision" | "reply-information" | "cancel-order" | "accept-result"
-type AdminAction = "mark-reviewed" | "request-information" | "save-offer" | "revise-offer" | "verify-payment" | "update-progress" | "close-order"
+type AdminAction = "mark-reviewed" | "request-information" | "save-offer" | "revise-offer" | "verify-payment" | "reject-payment" | "update-progress" | "close-order"
 
 function normalizeOrder(order: Order): Order {
   if (!order) return order
@@ -156,13 +156,14 @@ export class OrderRepository {
   saveOffer(id: string, draft: OfferDraft) { return this.adminAction(id, "save-offer", draft, "Penawaran tersedia di tautan pelanggan.") }
   reviseOffer(id: string, draft: OfferDraft) { return this.adminAction(id, "revise-offer", draft, "Versi penawaran baru dibuat.") }
   verifyPayment(id: string, merchantReference: string) { return this.adminAction(id, "verify-payment", { merchantReference }, "Pembayaran diverifikasi.") }
+  rejectPayment(id: string, reason: string) { return this.adminAction(id, "reject-payment", { reason }, "Hasil pemeriksaan disimpan. Pelanggan dapat mengonfirmasi pembayaran kembali.") }
   updateProgress(id: string, status: Order["status"]) {
     return this.adminAction(id, "update-progress", { status }, "Progres diperbarui.")
   }
   closeOrder(id: string, status: "ditolak" | "dibatalkan", reason: string, refundReference?: string) {
     return this.adminAction(id, "close-order", { status, reason, refundReference }, status === "ditolak" ? "Pesanan ditolak." : "Pesanan dibatalkan.")
   }
-  acceptOffer(id: string) { return this.customerAction(id, "accept-offer", undefined, "Penawaran disetujui.") }
+  acceptOffer(id: string, offer: Pick<Offer, "id" | "version">) { return this.customerAction(id, "accept-offer", { offerId: offer.id, offerVersion: offer.version }, "Penawaran disetujui.") }
   markPaymentAttempt(id: string) { return this.customerAction(id, "mark-payment-attempt", undefined, "Pembayaran menunggu verifikasi admin.") }
   requestRevision(id: string, notes: string) { return this.customerAction(id, "request-revision", { notes }, "Catatan revisi tersimpan.") }
   replyInformation(id: string, message: string) { return this.customerAction(id, "reply-information", { message }, "Informasi tambahan dikirim.") }
