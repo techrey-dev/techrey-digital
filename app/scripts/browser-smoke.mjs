@@ -23,7 +23,15 @@ try {
   appUrl = `http://127.0.0.1:${appPort}`
   appServer = spawn(process.execPath, ["--no-warnings", "server.mjs", "--dev"], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(appPort), HOST: "127.0.0.1" },
+    env: {
+      ...process.env,
+      PORT: String(appPort),
+      HOST: "127.0.0.1",
+      GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "test-google-id",
+      GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || "test-google-secret",
+      GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID || "test-github-id",
+      GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET || "test-github-secret",
+    },
     stdio: "ignore",
     windowsHide: true,
   })

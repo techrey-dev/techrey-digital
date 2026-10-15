@@ -40,18 +40,18 @@ export function HomePage() {
         <section className="hero shell-width">
           <motion.div className="hero-copy" initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}>
             <div className="hero-status-pill">
-              <span className="pulse-dot" /> PARTNER KEBUTUHAN DIGITALMU · WITA
+              <span className="pulse-dot" /> PARTNER KEBUTUHAN DIGITAL · WITA
             </div>
-            <h1>Yang masih<br />berantakan, <em className="hero-highlight">kita rapikan.</em></h1>
-            <p>Dokumen, presentasi, tugas coding, sampai website usaha—ceritakan kebutuhanmu. Spesifikasi dan harga disepakati dulu sebelum pengerjaan dimulai.</p>
+            <h1>Yang masih berantakan,<br /><span className="hero-highlight">kita rapikan.</span></h1>
+            <p>Dokumen akademis, presentasi teknis, perbaikan coding, sampai website usaha—ceritakan kebutuhanmu. Spesifikasi dan harga disepakati dulu sebelum pengerjaan dimulai.</p>
             <div className="hero-actions">
               <Link className="button button-glow" to="/pesan">Ceritakan kebutuhanmu <ArrowUpRight /></Link>
-              <a className="button-pill-secondary" href="#bukti-joki">Lihat bukti hasil joki <ArrowDownRight /></a>
+              <a className="button-pill-secondary" href="#portofolio">Lihat studi kasus <ArrowDownRight /></a>
             </div>
             <div className="hero-notes">
               <span><Check /> 100% Harga disepakati di awal</span>
-              <span><Check /> {config.qris.configured ? "QRIS merchant resmi" : "Pembayaran aman via QRIS di pesanan"}</span>
-              <span><Check /> Privasi berkas terjaga</span>
+              <span><Check /> {config.qris.configured ? "QRIS merchant resmi" : "Pembayaran aman via QRIS"}</span>
+              <span><Check /> Privasi berkas terjamin</span>
             </div>
           </motion.div>
           <motion.div className="hero-stage" initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.12 }}>
@@ -66,12 +66,33 @@ export function HomePage() {
           </motion.div>
         </section>
 
+        {/* ─── STUDIO MANIFESTO (PETTA DESAIN STYLE) ───────────────────── */}
+        <section className="intro-manifesto shell-width">
+          <div className="manifesto-grid">
+            <div className="manifesto-left">
+              <span className="eyebrow">TECHREY DIGITAL · WITA</span>
+              <p className="manifesto-sub">Presisi Teknis · Kerahasiaan Terjamin · Akuntabel</p>
+            </div>
+            <div className="manifesto-right">
+              <h2>Studio pengerjaan dan perapian digital terpercaya untuk kebutuhan akademis, materi presentasi profesional, serta website usaha.</h2>
+              <div className="manifesto-cols">
+                <p>
+                  Setiap pekerjaan diawali dengan penelaahan brief yang teliti. Ruang lingkup, tenggat waktu WITA, dan nominal biaya disepakati di awal secara transparan tanpa biaya tersembunyi.
+                </p>
+                <p>
+                  Menerapkan standar penyusunan rapi, tata bahasa baku, susunan kode bersih, serta visual presentasi yang komunikatif untuk hasil siap pakai.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <div className="marquee" aria-label="Daftar layanan"><div>{["DOKUMEN", "PRESENTASI", "CODING", "WEBSITE", "REVIEW TUGAS"].map((item) => <span key={item}>{item}<Sparkles /></span>)}</div></div>
 
         <section className="content-section shell-width" id="layanan">
           <motion.div className="section-heading" {...reveal}>
-            <div><span className="eyebrow">01 / YANG BISA DIBANTU</span><h2>Satu pintu untuk empat jenis pekerjaan.</h2></div>
-            <p>Pilih yang paling dekat dengan kebutuhanmu. Rincian harga baru dibuat setelah brief diperiksa.</p>
+            <div><span className="eyebrow">01 / YANG BISA DIBANTU</span><h2>Satu pintu untuk empat jenis kebutuhan.</h2></div>
+            <p>Pilih yang paling dekat dengan kebutuhanmu. Rincian penawaran dibuat setelah materi brief kamu periksa bersama.</p>
           </motion.div>
           <div className="service-grid">
             {SERVICES.map((service, index) => {
@@ -90,14 +111,14 @@ export function HomePage() {
           <p className="academic-note">Untuk tugas yang dinilai, bantuan berupa pembahasan, review, dan penyuntingan. Kamu tetap penulis dan penanggung jawab tugasmu.</p>
         </section>
 
-        {/* ─── REAL CLIENT PROJECT PROOF (BUKTI HASIL JOKI) ─────────────── */}
-        <section className="client-proof-section shell-width" id="bukti-joki">
+        {/* ─── REAL CLIENT PROJECT PROOF (STUDI KASUS PROYEK NYATA) ─────── */}
+        <section className="client-proof-section shell-width" id="portofolio">
           <motion.div className="section-heading" {...reveal}>
             <div>
-              <span className="eyebrow eyebrow-verified">02 / BUKTI PENGERJAAN NYATA</span>
-              <h2>Hasil joki website klien yang sudah selesai & aktif.</h2>
+              <span className="eyebrow eyebrow-verified">02 / STUDI KASUS KLIEN</span>
+              <h2>Hasil pengerjaan website klien yang sudah selesai & aktif.</h2>
             </div>
-            <p>Bukti nyata pengerjaan Techrey Digital: dari brief kebutuhan, pengerjaan tepat waktu, hingga online dan disetujui tanpa biaya tambahan.</p>
+            <p>Studi kasus nyata Techrey Digital: dari brief kebutuhan, pengerjaan tepat waktu, hingga online dan disetujui tanpa biaya tambahan.</p>
           </motion.div>
 
           <motion.article className="proof-card" {...reveal}>

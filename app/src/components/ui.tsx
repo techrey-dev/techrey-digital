@@ -51,10 +51,10 @@ export function PublicLayout({ children }: { children: ReactNode }) {
     <div className="public-shell">
       <div className="floating-navbar-container">
         <header className="site-header site-header-pill">
-          <Brand compact />
+          <Brand compact variant="light" />
           <nav className={open ? "nav-open" : ""} aria-label="Navigasi utama" onClick={() => setOpen(false)}>
             <Link to="/#layanan">Layanan</Link>
-            <Link to="/#bukti-joki">Bukti joki</Link>
+            <Link to="/#portofolio">Studi kasus</Link>
             <Link to="/#karya">Contoh karya</Link>
             <Link to="/#faq">FAQ</Link>
             <Link to="/akun/pesanan" className="nav-link-with-badge">
@@ -120,15 +120,50 @@ export function PublicLayout({ children }: { children: ReactNode }) {
         </header>
       </div>
       {children}
-      <footer className="site-footer shell-width">
-        <Brand compact />
-        <p>Dokumen, presentasi, coding, website, dan review tugas.</p>
-        <span>© 2026 Techrey Digital · WITA</span>
-        {publicConfig.whatsapp.configured && publicConfig.whatsapp.href ? (
-          <a className="whatsapp-footer-link" href={publicConfig.whatsapp.href} target="_blank" rel="noreferrer" aria-label="Chat Techrey melalui WhatsApp">
-            <MessageCircle /> Chat WhatsApp
-          </a>
-        ) : null}
+      <footer className="site-footer">
+        <div className="site-footer-inner shell-width">
+          <div className="site-footer-top">
+            <div className="site-footer-brand">
+              <Brand compact variant="light" />
+              <p>
+                Studio pengerjaan dan perapian kebutuhan digital: dokumen, presentasi teknis, perbaikan coding, pembuatan website usaha, dan review tugas.
+              </p>
+              <div className="footer-status-pill">
+                <span className="pulse-dot" /> Layanan Aktif · Standar Kerahasiaan Terjaga
+              </div>
+            </div>
+            <div className="site-footer-col">
+              <span className="footer-col-title">Eksplorasi</span>
+              <ul>
+                <li><Link to="/#layanan">Layanan Digital</Link></li>
+                <li><Link to="/#portofolio">Studi Kasus Klien</Link></li>
+                <li><Link to="/#karya">Contoh Format</Link></li>
+                <li><Link to="/#faq">Pertanyaan Umum (FAQ)</Link></li>
+              </ul>
+            </div>
+            <div className="site-footer-col">
+              <span className="footer-col-title">Portal Klien</span>
+              <ul>
+                <li><Link to="/pesan">Ajukan Kebutuhan</Link></li>
+                <li><Link to="/masuk">Masuk ke Akun</Link></li>
+                <li><Link to="/akun/pesanan">Pesanan Saya</Link></li>
+              </ul>
+            </div>
+            <div className="site-footer-col">
+              <span className="footer-col-title">Konsultasi</span>
+              <p className="footer-contact-desc">Konsultasikan materi atau spesifikasi sebelum submit pesanan.</p>
+              {publicConfig.whatsapp.configured && publicConfig.whatsapp.href ? (
+                <a className="button button-small button-whatsapp footer-wa-btn" href={publicConfig.whatsapp.href} target="_blank" rel="noreferrer" aria-label="Chat Techrey melalui WhatsApp">
+                  <MessageCircle /> Chat WhatsApp Kami
+                </a>
+              ) : null}
+            </div>
+          </div>
+          <div className="site-footer-bottom">
+            <span>© 2026 Techrey Digital. Hak Cipta Dilindungi Undang-Undang.</span>
+            <span>Kendari & Indonesia Tengah · Zona WITA</span>
+          </div>
+        </div>
       </footer>
     </div>
   )
