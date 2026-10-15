@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+node_modules/
+# Allow app/dist to be tracked in git for shared hosting deployment
+!app/dist/
+!app/dist/**
+logs/
+*.log
+.DS_Store

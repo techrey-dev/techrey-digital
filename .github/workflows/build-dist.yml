@@ -1,0 +1,65 @@
+name: Build Production Dist for Shared Hosting
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "app/src/**"
+      - "app/public/**"
+      - "app/index.html"
+      - "app/package.json"
+      - "app/vite.config.ts"
+  workflow_dispatch:
+
+concurrency:
+  group: build-dist
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Update Dist
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: "npm"
+          cache-dependency-path: "app/package-lock.json"
+
+      - name: Install dependencies
+        run: |
+          cd app
+          npm ci
+
+      - name: Build production bundle
+        run: |
+          cd app
+          npm run build
+
+      - name: Verify build artifacts
+        run: |
+          test -f app/dist/index.html || { echo "Build failed: app/dist/index.html not found"; exit 1; }
+          echo "Build verified: app/dist/ ready for Hostinger / LiteSpeed."
+
+      - name: Commit updated dist (for Hostinger Git auto-pull)
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/dist
+          if git diff --staged --quiet; then
+            echo "Dist is already up to date. No commit needed."
+          else
+            git commit -m "chore: auto-build dist for shared hosting [skip ci]"
+            git push
+          fi

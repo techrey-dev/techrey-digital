@@ -1,0 +1,44 @@
+# Techrey Digital - App Dist Rewrite Rules (LiteSpeed / Apache)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    <IfModule mod_autoindex.c>
+        Options -Indexes
+    </IfModule>
+
+    # If requested file or directory exists, serve it
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # SPA Fallback for client-side routing
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+# Cache-Control Headers for Static Assets
+<IfModule mod_headers.c>
+    # HTML should never be cached permanently so users get latest updates
+    <FilesMatch "\.(html|htm)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </FilesMatch>
+
+    # Vite hashed assets (JS, CSS, images) can be cached safely
+    <FilesMatch "\.(js|mjs|css|webp|png|jpg|jpeg|svg|ico|woff|woff2)$">
+        Header set Cache-Control "max-age=31536000, public, immutable"
+    </FilesMatch>
+</IfModule>
+
+# Correct MIME Types for ES Modules and WebP
+<IfModule mod_mime.c>
+    AddType application/javascript .js .mjs
+    AddType text/css .css
+    AddType image/webp .webp
+    AddType image/svg+xml .svg
+    AddType image/x-icon .ico
+    AddType application/json .json
+    AddType font/woff .woff
+    AddType font/woff2 .woff2
+</IfModule>

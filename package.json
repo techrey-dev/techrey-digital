@@ -1,0 +1,11 @@
+{
+  "name": "techrey-digital",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Techrey Digital shared hosting deployment and build scripts",
+  "scripts": {
+    "build": "npm --prefix app run build",
+    "dev": "npm --prefix app run dev",
+    "typecheck": "npm --prefix app run typecheck"
+  }
+}
