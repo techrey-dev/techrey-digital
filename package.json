@@ -2,9 +2,13 @@
   "name": "techrey-digital",
   "version": "1.0.0",
   "private": true,
-  "description": "Techrey Digital shared hosting deployment and build scripts",
+  "description": "Techrey Digital deployment entry: installs, builds and starts the app in ./app",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
-    "build": "npm --prefix app run build",
+    "build": "npm --prefix app ci --include=dev && npm --prefix app run build",
+    "start": "node --no-warnings app/server.mjs",
     "dev": "npm --prefix app run dev",
     "typecheck": "npm --prefix app run typecheck"
   }
