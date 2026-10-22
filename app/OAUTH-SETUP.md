@@ -43,8 +43,8 @@ Halaman `/masuk` sudah siap — kamu hanya perlu mengisi **Client ID** dan **Cli
 
 > **Produksi**: Ganti origin dan redirect URI ke domain produksi, contoh:
 > ```
-> https://techrey.com
-> https://techrey.com/api/auth/callback/google
+> https://techreydigital.store
+> https://techreydigital.store/api/auth/callback/google
 > ```
 
 ---
