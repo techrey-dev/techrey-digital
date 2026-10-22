@@ -8,6 +8,9 @@ import {
   Check,
   FileText,
   MessageCircle,
+  PenLine,
+  QrCode,
+  ReceiptText,
   Sparkles,
   Upload,
 } from "lucide-react"
@@ -266,16 +269,6 @@ Mohon dicek dan info penawarannya ya.`
           <Link className="back-link" to="/">
             <ArrowLeft /> Kembali ke beranda
           </Link>
-          <a
-            href={waOrderHref}
-            target="_blank"
-            rel="noreferrer"
-            className="wa-header-pill"
-            title="Pesan atau tanya langsung di WhatsApp"
-          >
-            <MessageCircle />
-            <span>Pesan via WhatsApp</span>
-          </a>
         </div>
 
         {/* Banner Pemesanan Cepat via WhatsApp */}
@@ -309,6 +302,12 @@ Mohon dicek dan info penawarannya ya.`
               </div>
             </div>
 
+            <ol className="order-how" aria-label="Cara kerjanya">
+              <li><b><PenLine /></b><div><strong>Isi form ini</strong><small>Sekitar 2 menit</small></div></li>
+              <li><b><ReceiptText /></b><div><strong>Terima penawaran</strong><small>Harga & tenggat pasti</small></div></li>
+              <li><b><QrCode /></b><div><strong>Bayar kalau setuju</strong><small>Lewat QRIS, baru dikerjakan</small></div></li>
+            </ol>
+
             {error && (
               <div className="form-error" role="alert">
                 <AlertCircle /> {error}
@@ -318,7 +317,7 @@ Mohon dicek dan info penawarannya ya.`
             {/* Bagian 1: Pilih Layanan */}
             <section className="form-section-block">
               <label className="form-section-title">
-                1. Pilih Layanan yang Dibutuhkan <span>*</span>
+                <b className="form-step-num">1</b> Pilih layanan <span>*</span>
               </label>
               <div className="service-grid-compact">
                 {SERVICES.map((service, idx) => {
@@ -346,7 +345,7 @@ Mohon dicek dan info penawarannya ya.`
             {/* Bagian 2: Rincian Proyek */}
             <section className="form-section-block">
               <label className="form-section-title">
-                2. Detail Kebutuhan <span>*</span>
+                <b className="form-step-num">2</b> Ceritakan detailnya <span>*</span>
               </label>
 
               <div className="form-field-group">
@@ -394,28 +393,28 @@ Mohon dicek dan info penawarannya ya.`
                     className={`deadline-chip ${form.deadlineChoice === "1-2-days" ? "is-active" : ""}`}
                     onClick={() => set("deadlineChoice", "1-2-days")}
                   >
-                    ⚡ 1–2 Hari (Kilat)
+                    1–2 hari <small>Kilat</small>
                   </button>
                   <button
                     type="button"
                     className={`deadline-chip ${form.deadlineChoice === "3-5-days" ? "is-active" : ""}`}
                     onClick={() => set("deadlineChoice", "3-5-days")}
                   >
-                    📅 3–5 Hari (Standar)
+                    3–5 hari <small>Standar</small>
                   </button>
                   <button
                     type="button"
                     className={`deadline-chip ${form.deadlineChoice === "1-week" ? "is-active" : ""}`}
                     onClick={() => set("deadlineChoice", "1-week")}
                   >
-                    🗓️ 1 Minggu+
+                    1 minggu+ <small>Santai</small>
                   </button>
                   <button
                     type="button"
                     className={`deadline-chip ${form.deadlineChoice === "custom" ? "is-active" : ""}`}
                     onClick={() => set("deadlineChoice", "custom")}
                   >
-                    ⏱️ Pilih Jam & Tanggal
+                    Pilih tanggal <small>Atur sendiri</small>
                   </button>
                 </div>
 
@@ -437,9 +436,10 @@ Mohon dicek dan info penawarannya ya.`
                 <label htmlFor="referenceFileInput">
                   Lampiran Materi / Dokumen / Soal <span>(Opsional, maks 10 MB)</span>
                 </label>
-                <div className="file-upload-box">
+                <label className={`file-upload-box${referenceFile ? " has-file" : ""}`}>
                   <input
                     id="referenceFileInput"
+                    className="file-input-hidden"
                     type="file"
                     accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.jpg,.jpeg,.png,.webp,.txt,.csv"
                     onChange={(e) => {
@@ -462,19 +462,19 @@ Mohon dicek dan info penawarannya ya.`
                       </div>
                     ) : (
                       <div>
-                        <strong>Pilih file melalui tombol di atas</strong>
-                        <small>PDF, DOCX, PPTX, ZIP, atau Gambar (opsional)</small>
+                        <strong>Klik untuk pilih file</strong>
+                        <small>PDF, DOCX, PPTX, ZIP, atau gambar</small>
                       </div>
                     )}
                   </div>
-                </div>
+                </label>
               </div>
             </section>
 
             {/* Bagian 3: Identitas Kontak */}
             <section className="form-section-block">
               <label className="form-section-title">
-                3. Kontak Kamu <span>*</span>
+                <b className="form-step-num">3</b> Kontak kamu <span>*</span>
               </label>
 
               <div className="form-row">

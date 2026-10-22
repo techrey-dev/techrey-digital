@@ -16,7 +16,8 @@ import {
   Upload,
   WalletCards,
 } from "lucide-react"
-import { Dialog, PublicLayout, StatusPill } from "../components/ui"
+import { Dialog, PublicLayout } from "../components/ui"
+import { NextStepCard } from "../components/OrderGuide"
 import { useOrderData } from "../data/OrderContext"
 import type { PaymentInstructions } from "../data/types"
 import { fileSize, paymentLabels, rupiah, witaDate, workLabels } from "../lib/format"
@@ -24,14 +25,6 @@ import { authClient } from "../lib/authClient"
 import { usePublicConfig } from "../lib/publicConfig"
 import { buildWhatsAppLink } from "../lib/whatsapp"
 
-const track = [
-  "diajukan",
-  "menunggu-persetujuan",
-  "menunggu-pembayaran",
-  "dikerjakan",
-  "hasil-dikirim",
-  "selesai",
-] as const
 
 export function CustomerOrderPage() {
   const { accountId, id } = useParams()
@@ -275,14 +268,6 @@ function CustomerOrderDetail() {
   const isPaymentInstructionsLoading =
     needsInstructions && !currentPaymentInstructions && !currentPaymentInstructionError
 
-  const normalizedStatus =
-    order.status === "perlu-informasi" || order.status === "ditinjau"
-      ? "diajukan"
-      : order.status === "antrean" || order.status === "revisi"
-        ? "dikerjakan"
-        : order.status
-  const progressIndex = track.indexOf(normalizedStatus as (typeof track)[number])
-  const isClosed = order.status === "ditolak" || order.status === "dibatalkan"
 
   return (
     <PublicLayout>
@@ -324,80 +309,12 @@ function CustomerOrderDetail() {
             <h1>{order.title}</h1>
             <p>{order.service} · tenggat {witaDate(order.deadline)}</p>
           </div>
-          <div className="status-stack">
-            <span>STATUS PEKERJAAN</span>
-            <StatusPill status={order.status} />
-          </div>
         </section>
+
+        <NextStepCard order={order} />
 
         <div className="customer-grid">
           <div className="customer-main-stack">
-            <section className="panel progress-panel">
-              <div className="panel-heading">
-                <div>
-                  <span>PROGRES</span>
-                  <h2>Posisi pekerjaanmu</h2>
-                </div>
-                <Clock3 />
-              </div>
-              <ol className="timeline">
-                {track.map((status, index) => {
-                  const active = !isClosed && status === normalizedStatus
-                  const done = !isClosed && (index < progressIndex || order.status === "selesai")
-                  return (
-                    <li key={status}>
-                      <span className={done ? "done" : active ? "active" : ""}>
-                        {done ? <Check /> : index + 1}
-                      </span>
-                      <div>
-                        <strong>{workLabels[status]}</strong>
-                        <small>
-                          {[
-                            "Brief masuk",
-                            "Harga dan lingkup",
-                            "QRIS & verifikasi",
-                            "Antrean dan pengerjaan",
-                            "File tersedia",
-                            "Diterima pelanggan",
-                          ][index]}
-                        </small>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ol>
-
-              {order.status === "dibatalkan" && (
-                <div className="inline-alert warning">
-                  <Ban />
-                  <p>
-                    <strong>Pesanan Dibatalkan</strong>
-                    <span>{order.closedReason ? `Alasan: ${order.closedReason}` : "Pesanan ini telah dibatalkan."}</span>
-                  </p>
-                </div>
-              )}
-
-              {order.status === "ditolak" && (
-                <div className="inline-alert warning">
-                  <Ban />
-                  <p>
-                    <strong>Pesanan Ditolak</strong>
-                    <span>{order.closedReason ? `Alasan: ${order.closedReason}` : "Admin belum dapat menerima pesanan ini."}</span>
-                  </p>
-                </div>
-              )}
-
-              {(order.status === "perlu-informasi" || order.status === "revisi") && (
-                <div className="inline-alert warning">
-                  <AlertCircle />
-                  <p>
-                    <strong>{order.status === "revisi" ? "Catatan revisi sudah masuk." : "Admin membutuhkan informasi tambahan."}</strong>
-                    <span>{order.status === "revisi" ? "Status akan diperbarui setelah admin menangani catatan." : "Baca pertanyaan admin dan kirim jawaban melalui formulir di bawah."}</span>
-                  </p>
-                </div>
-              )}
-            </section>
-
             {orderMessages.length > 0 && (
               <section className="panel">
                 <div className="panel-heading">
@@ -419,7 +336,7 @@ function CustomerOrderDetail() {
             )}
 
             {order.status === "perlu-informasi" && (
-              <form className="panel dialog-form" onSubmit={(event) => void submitInformation(event)}>
+              <form id="langkah-info" className="panel dialog-form" onSubmit={(event) => void submitInformation(event)}>
                 <div className="panel-heading">
                   <div>
                     <span>BALAS ADMIN</span>
@@ -512,7 +429,7 @@ function CustomerOrderDetail() {
               </dl>
             </section>
 
-            <section className="panel result-panel">
+            <section id="langkah-hasil" className="panel result-panel">
               <div className="panel-heading">
                 <div>
                   <span>HASIL & REVISI</span>
@@ -612,7 +529,7 @@ function CustomerOrderDetail() {
           </div>
 
           <aside className="customer-side-stack">
-            <section className="panel offer-panel">
+            <section id="langkah-penawaran" className="panel offer-panel">
               <div className="panel-heading">
                 <div>
                   <span>PENAWARAN</span>
@@ -660,7 +577,7 @@ function CustomerOrderDetail() {
               )}
             </section>
 
-            <section className="panel payment-card">
+            <section id="langkah-bayar" className="panel payment-card">
               <div className="panel-heading">
                 <div>
                   <span>PEMBAYARAN QRIS</span>

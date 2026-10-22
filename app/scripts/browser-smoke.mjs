@@ -125,9 +125,9 @@ try {
 
   await command("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false })
   await command("Page.navigate", { url: appUrl + "/" })
-  await waitFor("document.querySelector('.site-header') && document.querySelector('.hero')", "beranda desktop")
+  await waitFor("document.querySelector('.site-nav') && document.querySelector('.home-hero')", "beranda desktop")
   await waitFor("document.querySelector('canvas') || document.querySelector('.hero-fallback')?.naturalWidth", "visual hero")
-  const desktop = await evaluate("({width: innerWidth, scrollWidth: document.documentElement.scrollWidth, logo: Boolean(document.querySelector('.brand img')), canvas: document.querySelectorAll('canvas').length, fallback: Boolean(document.querySelector('.hero-fallback')?.naturalWidth), adminInPublicNav: [...document.querySelectorAll('.site-header nav a')].some((item) => item.textContent.trim() === 'Admin')})")
+  const desktop = await evaluate("({width: innerWidth, scrollWidth: document.documentElement.scrollWidth, logo: Boolean(document.querySelector('.brand img')), canvas: document.querySelectorAll('canvas').length, fallback: Boolean(document.querySelector('.hero-fallback')?.naturalWidth), adminInPublicNav: [...document.querySelectorAll('.site-nav-links a')].some((item) => item.textContent.trim() === 'Admin')})")
   if (desktop.width !== 1440 || desktop.scrollWidth > 1456 || !desktop.logo || (!desktop.canvas && !desktop.fallback) || desktop.adminInPublicNav) {
     throw new Error("Tampilan desktop atau navigasi publik gagal: " + JSON.stringify(desktop))
   }
@@ -136,17 +136,17 @@ try {
   await command("Page.navigate", { url: appUrl + "/masuk" })
   await waitFor("document.querySelector('.login-card')", "halaman masuk mobile")
 
-  const mobile = await evaluate("({width: innerWidth, scrollWidth: document.documentElement.scrollWidth, mobileRule: matchMedia('(max-width: 430px)').matches, loginTop: getComputedStyle(document.querySelector('.mobile-login')).display !== 'none', googleEnabled: ![...document.querySelectorAll('button')].find((item) => item.textContent.includes('Google'))?.disabled, githubEnabled: ![...document.querySelectorAll('button')].find((item) => item.textContent.includes('GitHub'))?.disabled})")
+  const mobile = await evaluate("({width: innerWidth, scrollWidth: document.documentElement.scrollWidth, mobileRule: matchMedia('(max-width: 430px)').matches, loginTop: getComputedStyle(document.querySelector('.site-nav-login')).display !== 'none', googleEnabled: ![...document.querySelectorAll('button')].find((item) => item.textContent.includes('Google'))?.disabled, githubEnabled: ![...document.querySelectorAll('button')].find((item) => item.textContent.includes('GitHub'))?.disabled})")
   if (mobile.width !== 390 || mobile.scrollWidth > 390 || !mobile.mobileRule || !mobile.loginTop || !mobile.googleEnabled || !mobile.githubEnabled) {
     throw new Error("Tampilan mobile atau login OAuth gagal: " + JSON.stringify(mobile))
   }
 
-  const menu = await evaluate("(async () => { const button = document.querySelector('.menu-button'); button.focus(); button.click(); await new Promise((resolve) => setTimeout(resolve, 50)); return {open: button.getAttribute('aria-expanded') === 'true'}; })()")
+  const menu = await evaluate("(async () => { const button = document.querySelector('.site-nav-burger'); button.focus(); button.click(); await new Promise((resolve) => setTimeout(resolve, 50)); return {open: button.getAttribute('aria-expanded') === 'true'}; })()")
   if (!menu.open) throw new Error("Menu mobile tidak terbuka.")
   await command("Input.dispatchKeyEvent", { type: "rawKeyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 })
   await command("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 })
   await wait(80)
-  const keyboard = await evaluate("({closed: document.querySelector('.menu-button').getAttribute('aria-expanded') === 'false', focusReturned: document.activeElement === document.querySelector('.menu-button')})")
+  const keyboard = await evaluate("({closed: document.querySelector('.site-nav-burger').getAttribute('aria-expanded') === 'false', focusReturned: document.activeElement === document.querySelector('.site-nav-burger')})")
   if (!keyboard.closed || !keyboard.focusReturned) throw new Error("Escape atau pengembalian fokus menu gagal: " + JSON.stringify(keyboard))
 
   await command("Page.navigate", { url: appUrl + "/akun/pesanan" })
@@ -158,8 +158,8 @@ try {
   if (!customerGuard || !adminGuard) throw new Error("Guard pelanggan atau admin tidak tampil untuk sesi anonim.")
 
   await command("Page.navigate", { url: appUrl + "/#%5B" })
-  await waitFor("document.querySelector('.hero')", "beranda dengan hash")
-  if (!await evaluate("Boolean(document.querySelector('.hero'))")) throw new Error("Hash tidak valid merusak beranda.")
+  await waitFor("document.querySelector('.home-hero')", "beranda dengan hash")
+  if (!await evaluate("Boolean(document.querySelector('.home-hero'))")) throw new Error("Hash tidak valid merusak beranda.")
 
   const formLayouts = []
   for (const width of [320, 390, 768, 1440]) {
@@ -187,7 +187,7 @@ try {
   for (const width of [320, 390, 430]) {
     await command("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: true })
     await command("Page.navigate", { url: appUrl + "/" })
-    await waitFor("document.querySelector('.site-header')", `CSS admin mobile ${width}px`)
+    await waitFor("document.querySelector('.site-nav')", `CSS admin mobile ${width}px`)
     const layout = await evaluate(`(() => {
     document.body.innerHTML = '<div class="admin-shell"><div class="admin-frame"><aside class="admin-sidebar"><div class="admin-brand-row"></div><nav><a>Ringkasan</a><a>Pesanan</a><a>Pembayaran</a></nav></aside><main class="admin-content"><div class="admin-topline"><div class="admin-topline-right"><button class="admin-topline-logout">Keluar</button></div></div><div class="admin-page"><nav class="mobile-admin-jump"><a>Bayar</a><a>Brief</a><a>Revisi</a><a>AI</a><a>Progres</a></nav><div class="admin-detail-grid"><div class="admin-detail-main"><section class="admin-card detail-section"><div class="admin-card-heading"><div><span>01 / BRIEF</span><h2>Kebutuhan pelanggan</h2></div></div><p class="brief-copy">Buatkan website e-commerce modern dengan checkout dan katalog produk yang lengkap.</p><dl class="detail-list"><div><dt>Keperluan</dt><dd>Usaha</dd></div><div><dt>Anggaran awal</dt><dd>Rp 500.000</dd></div><div><dt>Lampiran</dt><dd>Tidak ada</dd></div></dl><div class="inline-actions"><button class="button button-small">Tandai ditinjau</button></div><form class="admin-inline-form"><label>Informasi yang perlu dilengkapi</label><textarea rows="3" placeholder="Contoh: mohon kirim pedoman format dan jumlah halaman final."></textarea><button class="button button-ghost button-small">Kirim permintaan informasi</button></form></section><section class="admin-card assistant-panel"><div class="assistant-heading"><div class="assistant-mark"></div><div><span>ASISTEN TECHREY</span><h2>Bantu baca brief, keputusan tetap di Anda.</h2></div></div></section></div><aside class="admin-detail-side"><section class="admin-card detail-section"><div class="admin-card-heading"><h2>Pembayaran</h2></div></section></aside></div></div></main></div></div>';
     document.querySelector('.mobile-admin-jump').insertAdjacentHTML('afterend', '<section class="admin-stats"><article><span>Pembayaran terverifikasi</span><strong>Rp 800.000</strong><small>Akumulasi total</small></article><article><span>Pesanan aktif</span><strong>01</strong><small>Termasuk antrean dan revisi</small></article><article><span>Perlu verifikasi</span><strong>00</strong><small>Pembayaran pelanggan</small></article><article><span>Revisi aktif</span><strong>00</strong><small>Perlu ditangani</small></article></section><section class="payment-queue-summary"><button><span>Perlu dicek</span><strong>0</strong><small>Buka dan cocokkan transaksi</small></button><button><span>Menunggu pelanggan</span><strong>1</strong><small>Belum perlu tindakan admin</small></button><button><span>Selesai diverifikasi</span><strong>4</strong><small>Pembayaran sudah cocok</small></button></section>');
@@ -228,11 +228,11 @@ try {
   for (const width of [320, 390, 430, 600, 760]) {
     await command("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: true })
     await command("Page.navigate", { url: appUrl + "/akun/pesanan" })
-    await waitFor("document.querySelector('.mobile-account-link .mobile-badge-indicator')", `akun mobile ${width}px`)
+    await waitFor("document.querySelector('.site-nav-user .nav-badge')", `akun mobile ${width}px`)
     const layout = await evaluate(`(() => {
-      const link = document.querySelector('.mobile-account-link');
-      const avatar = link.querySelector('.user-avatar-initial');
-      const badge = link.querySelector('.mobile-badge-indicator');
+      const link = document.querySelector('.site-nav-user');
+      const avatar = link.querySelector('.avatar-initial');
+      const badge = link.querySelector('.nav-badge');
       const rect = link.getBoundingClientRect();
       const card = document.querySelector('.account-order-card').getBoundingClientRect();
       return { width: innerWidth, scrollWidth: document.documentElement.scrollWidth,
@@ -246,7 +246,7 @@ try {
       throw new Error("Tombol akun atau daftar pesanan mobile gagal: " + JSON.stringify(layout))
     }
     await command("Page.navigate", { url: appUrl + "/" })
-    await waitFor("document.querySelector('.mobile-account-link')", "tombol akun di beranda")
+    await waitFor("document.querySelector('.site-nav-user')", "tombol akun di beranda")
     await command("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: layout.x, y: layout.y }] })
     await command("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] })
     await waitFor("location.pathname === '/akun/pesanan' && document.querySelector('.account-order-card')", "navigasi sentuh akun")

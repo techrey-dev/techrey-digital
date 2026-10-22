@@ -1,13 +1,22 @@
 import { useEffect, useState } from "react"
-import { ArrowRight, Code2, LogIn, LogOut, PackageSearch, Sparkles } from "lucide-react"
+import { ArrowRight, Code2, LogIn, LogOut, PackageSearch } from "lucide-react"
 import { Link, useSearchParams } from "react-router"
-import { PublicLayout, StatusPill } from "../components/ui"
+import { motion } from "motion/react"
+import { PublicLayout } from "../components/ui"
+import { StepBar } from "../components/OrderGuide"
+import { orderGuide, turnLabels, type OrderTurn } from "../lib/orderGuide"
 import { useOrderData } from "../data/OrderContext"
 import { authClient } from "../lib/authClient"
 import { rupiah, witaDate } from "../lib/format"
 import { safeNextPath } from "../lib/navigation"
 
 type ProviderConfig = { google: boolean; github: boolean }
+
+const ORDER_GROUPS: { key: string; title: string; hint: string; turns: OrderTurn[] }[] = [
+  { key: "kamu", title: "Perlu tindakanmu", hint: "Pesanan ini menunggu kamu. Buka untuk lanjut.", turns: ["kamu"] },
+  { key: "kami", title: "Sedang kami proses", hint: "Tidak perlu melakukan apa-apa. Kami kabari kalau ada perkembangan.", turns: ["kami"] },
+  { key: "selesai", title: "Selesai & ditutup", hint: "Riwayat pesanan dan file hasilnya.", turns: ["selesai", "tutup"] },
+]
 
 export function LoginPage({ admin = false }: { admin?: boolean }) {
   const [params] = useSearchParams()
@@ -125,34 +134,38 @@ export function AccountOrdersPage() {
           </div>
         </header>
         {orders.length ? (
-          <div className="account-order-grid">
-            {orders.map((order) => {
-              const needsAttention = ["menunggu-persetujuan", "hasil-dikirim", "menunggu-pembayaran", "perlu-informasi"].includes(order.status)
+          <div className="order-groups">
+            {ORDER_GROUPS.map((group) => {
+              const items = orders.filter((order) => group.turns.includes(orderGuide(order).turn))
+              if (!items.length) return null
               return (
-                <Link className={`account-order-card${needsAttention ? " has-notification" : ""}`} to={`/akun/pesanan/${order.id}`} key={order.id}>
-                  <div>
-                    <small>{order.id} · {order.service}</small>
-                    <h2>{order.title}</h2>
-                    <p>Tenggat {witaDate(order.deadline)}</p>
-                    {needsAttention && (
-                      <span className="order-notification-badge">
-                        <Sparkles style={{ width: 12, height: 12 }} />
-                        {order.status === "menunggu-persetujuan"
-                          ? "Penawaran Masuk — Periksa Sekarang"
-                          : order.status === "hasil-dikirim"
-                          ? "Hasil Selesai — Siap Diunduh"
-                          : order.status === "menunggu-pembayaran"
-                          ? "Menunggu Pembayaran"
-                          : "Perlu Tanggapan Info"}
-                      </span>
-                    )}
+                <section className={`order-group order-group-${group.key}`} key={group.key}>
+                  <h2>{group.title} <span>{items.length}</span></h2>
+                  <p>{group.hint}</p>
+                  <div className="account-order-grid">
+                    {items.map((order, index) => {
+                      const guide = orderGuide(order)
+                      return (
+                        <motion.div key={order.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06, duration: 0.4 }}>
+                          <Link className={`account-order-card turn-${guide.turn}`} to={`/akun/pesanan/${order.id}`}>
+                            <div className="order-card-top">
+                              <span className="turn-chip">{turnLabels[guide.turn]}</span>
+                              <small>{order.id}</small>
+                            </div>
+                            <h3>{order.title}</h3>
+                            <p className="order-card-meta">{order.service} · tenggat {witaDate(order.deadline, false)}</p>
+                            <p className="order-card-next">{guide.headline}</p>
+                            <StepBar step={guide.step} />
+                            <div className="order-card-foot">
+                              <strong>{rupiah(order.offers.at(-1)?.amount)}</strong>
+                              <span>{guide.action ?? "Lihat detail"} <ArrowRight /></span>
+                            </div>
+                          </Link>
+                        </motion.div>
+                      )
+                    })}
                   </div>
-                  <div>
-                    <StatusPill status={order.status} />
-                    <strong>{rupiah(order.offers.at(-1)?.amount)}</strong>
-                    <ArrowRight />
-                  </div>
-                </Link>
+                </section>
               )
             })}
           </div>

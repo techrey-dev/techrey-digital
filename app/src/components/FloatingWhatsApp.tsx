@@ -1,12 +1,10 @@
-import { useState } from "react"
 import { useLocation } from "react-router"
-import { MessageCircle, X } from "lucide-react"
+import { MessageCircle } from "lucide-react"
 import { usePublicConfig } from "../lib/publicConfig"
 
 export function FloatingWhatsApp() {
   const { pathname } = useLocation()
   const publicConfig = usePublicConfig()
-  const [closedBadge, setClosedBadge] = useState(false)
 
   // Halaman admin tidak membutuhkan CTA publik; halaman pemesanan sudah memiliki CTA WhatsApp sendiri.
   if (pathname.startsWith("/admin") || pathname === "/pesan") return null
@@ -18,24 +16,6 @@ export function FloatingWhatsApp() {
 
   return (
     <div className="floating-wa-container" aria-label="Kontak WhatsApp Techrey Digital">
-      {!closedBadge && (
-        <div className="floating-wa-badge">
-          <span>Butuh respon cepat atau konsultasi?</span>
-          <strong>Chat WhatsApp Kami</strong>
-          <button
-            type="button"
-            className="floating-wa-badge-close"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setClosedBadge(true)
-            }}
-            aria-label="Tutup pesan bantuan"
-          >
-            <X />
-          </button>
-        </div>
-      )}
       <a
         href={defaultHref}
         target="_blank"

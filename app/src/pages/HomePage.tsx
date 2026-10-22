@@ -1,29 +1,207 @@
-import { useEffect } from "react"
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react"
 import { Link, useLocation } from "react-router"
-import { motion } from "motion/react"
-import { ArrowDownRight, ArrowUpRight, Braces, Check, FileText, MessageCircle, Presentation, Sparkles } from "lucide-react"
+import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react"
+import { ArrowDownRight, ArrowUpRight, Braces, Check, FileText, MessageCircle, Plus, Presentation } from "lucide-react"
 import { HeroExperience } from "../components/HeroExperience"
 import { PublicLayout } from "../components/ui"
 import { SERVICES, type ServiceName } from "../data/types"
 import { usePublicConfig } from "../lib/publicConfig"
+import pettaSite from "../assets/portfolio/petta-site.jpg"
 
-const serviceContent: Record<ServiceName, { icon: typeof FileText; title: string; body: string; note: string; price: string }> = {
-  "Dokumen & Penulisan": { icon: FileText, title: "Dokumen & Penulisan", body: "Ketik ulang, edit bahasa, rapikan makalah atau laporan, sampai daftar pustaka.", note: "Biar enak dibaca", price: "Mulai Rp25rb" },
-  "PPT & Presentasi": { icon: Presentation, title: "PPT & Presentasi", body: "Ubah materi yang kamu punya menjadi slide yang runtut, jelas, dan nyaman dipresentasikan.", note: "Biar ceritanya nyambung", price: "Mulai Rp50rb" },
-  "Coding & Website": { icon: Braces, title: "Coding & Website", body: "Website usaha atau portofolio, perbaikan error, fitur tambahan, dan penjelasan kode.", note: "Biar idenya jalan", price: "Menyesuaikan fitur" },
-  "Bantuan & Review Tugas": { icon: Check, title: "Bantuan & Review Tugas", body: "Bahas soal, periksa jawaban, dan pahami materi atau kode tanpa mengambil alih tanggung jawabmu.", note: "Biar makin paham", price: "Mulai Rp30rb" },
+const serviceContent: Record<ServiceName, { icon: typeof FileText; body: string; price: string }> = {
+  "Dokumen & Penulisan": { icon: FileText, body: "Ketik ulang, rapikan format makalah atau laporan, perbaiki bahasa, sampai daftar pustaka.", price: "Mulai Rp25rb" },
+  "PPT & Presentasi": { icon: Presentation, body: "Materi mentah jadi slide yang runtut, enak dilihat, dan gampang dipresentasikan.", price: "Mulai Rp50rb" },
+  "Coding & Website": { icon: Braces, body: "Website usaha atau portofolio, perbaikan error, dan fitur tambahan dengan kode yang rapi.", price: "Sesuai fitur" },
+  "Bantuan & Review Tugas": { icon: Check, body: "Bahas soal, cek jawaban, dan pahami materi atau kode tanpa mengambil alih tanggung jawabmu.", price: "Mulai Rp30rb" },
 }
 
+const ROTATING_WORDS = ["makalah & laporan", "slide presentasi", "website usaha", "error di kodemu"]
+
+const MARQUEE_ITEMS = ["Dokumen", "Presentasi", "Website", "Coding", "Review tugas", "Bug fix"]
+
+const STEPS = [
+  { title: "Ceritakan", body: "Pilih layanan, tulis kebutuhan, lampirkan materi, dan tentukan tenggat." },
+  { title: "Sepakati", body: "Brief diperiksa, lalu kamu dapat penawaran: harga tetap, hasil, dan batas revisi." },
+  { title: "Bayar", body: "Bayar lewat QRIS hanya setelah kamu setuju dengan penawarannya." },
+  { title: "Terima", body: "Pantau progres di halaman pesanan, unduh hasil, ajukan revisi kalau perlu." },
+]
+
+const ease = [0.22, 1, 0.36, 1] as const
+
 const reveal = {
-  initial: { opacity: 0, y: 24 },
+  initial: { opacity: 0, y: 28 },
   whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: "-70px" },
-  transition: { duration: 0.55 },
+  viewport: { once: true, margin: "-80px" },
+  transition: { duration: 0.6, ease },
+}
+
+function RevealLine({ children, delay }: { children: ReactNode; delay: number }) {
+  return (
+    <span className="line-mask">
+      <motion.span initial={{ y: "105%" }} animate={{ y: 0 }} transition={{ duration: 0.8, delay, ease }}>
+        {children}
+      </motion.span>
+    </span>
+  )
+}
+
+// Fixed offsets so "berantakan," looks hand-tossed but renders the same on every load: [rotate deg, y em].
+const MESS: [number, number][] = [[-7, 0.03], [5, -0.05], [-3, 0.06], [8, -0.02], [-6, 0.04], [4, -0.06], [-9, 0.01], [6, 0.05], [-2, -0.04], [7, 0.02], [-5, 0]]
+
+function MessyWord({ word }: { word: string }) {
+  return (
+    <span className="messy-word" aria-hidden="true">
+      {word.split("").map((letter, index) => {
+        const [rotate, y] = MESS[index % MESS.length]
+        return (
+          <motion.span
+            key={index}
+            className="messy-drop"
+            initial={{ opacity: 0, y: "-0.6em" }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 + index * 0.035, type: "spring", stiffness: 500, damping: 18 }}
+          >
+            <span className="messy-letter" style={{ "--r": `${rotate}deg`, "--y": `${y}em` } as CSSProperties}>{letter}</span>
+          </motion.span>
+        )
+      })}
+    </span>
+  )
+}
+
+// Letters fly in from scattered positions and snap into a neat blue block: the "tidying up" moment.
+const SCATTER: [number, number, number][] = [[-0.8, -0.9, -40], [0.5, 0.8, 30], [-0.3, -1.1, 55], [0.9, 0.6, -25], [-0.6, 1, 20], [0.4, -0.8, -50], [0.7, 0.9, 35], [-0.9, 0.4, -15]]
+
+function TidyWord({ word }: { word: string }) {
+  return (
+    <span className="tidy-word" aria-hidden="true">
+      <motion.span className="tidy-block" initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.45, duration: 0.55, ease }} />
+      {word.split("").map((letter, index) => {
+        const [x, y, rotate] = SCATTER[index % SCATTER.length]
+        return (
+          <motion.span
+            key={index}
+            className="tidy-letter"
+            initial={{ opacity: 0, x: `${x}em`, y: `${y}em`, rotate }}
+            animate={{ opacity: 1, x: 0, y: 0, rotate: 0 }}
+            transition={{ delay: 0.6 + index * 0.05, type: "spring", stiffness: 260, damping: 13 }}
+          >
+            {letter}
+          </motion.span>
+        )
+      })}
+      <motion.span className="tidy-arrow" initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 1.2, type: "spring", stiffness: 400, damping: 12 }}>
+        <ArrowUpRight />
+      </motion.span>
+    </span>
+  )
+}
+
+function WordRotator() {
+  const [index, setIndex] = useState(0)
+  const reduceMotion = useReducedMotion()
+
+  useEffect(() => {
+    if (reduceMotion) return
+    const timer = window.setInterval(() => setIndex((value) => (value + 1) % ROTATING_WORDS.length), 2400)
+    return () => window.clearInterval(timer)
+  }, [reduceMotion])
+
+  return (
+    <span className="rotator">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={ROTATING_WORDS[index]}
+          initial={{ y: "80%", opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: "-80%", opacity: 0 }}
+          transition={{ duration: 0.35, ease }}
+        >
+          {ROTATING_WORDS[index]}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  )
+}
+
+function ShowcaseFrame() {
+  const ref = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "center center"] })
+  const rotateX = useTransform(scrollYProgress, [0, 1], [18, 0])
+  const scale = useTransform(scrollYProgress, [0, 1], [0.9, 1])
+  const y = useTransform(scrollYProgress, [0, 1], [60, 0])
+
+  return (
+    <div className="showcase-stage" ref={ref}>
+      <motion.a
+        className="showcase-frame"
+        href="https://pettadesain.id"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Buka website pettadesain.id di tab baru"
+        style={{ rotateX, scale, y }}
+      >
+        <div className="showcase-bar">
+          <span className="showcase-dots"><i /><i /><i /></span>
+          <span className="showcase-url">pettadesain.id</span>
+        </div>
+        <img src={pettaSite} alt="Tampilan beranda website pettadesain.id" loading="lazy" width={1502} height={803} />
+        <span className="showcase-hover">Buka website <ArrowUpRight /></span>
+      </motion.a>
+    </div>
+  )
+}
+
+function ProcessSteps() {
+  const ref = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 85%", "end 60%"] })
+  const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 24 })
+
+  return (
+    <div className="steps" ref={ref}>
+      <div className="steps-track" aria-hidden="true"><motion.div className="steps-fill" style={{ scaleX: progress }} /></div>
+      <ol>
+        {STEPS.map((step, index) => (
+          <motion.li key={step.title} {...reveal} transition={{ ...reveal.transition, delay: index * 0.1 }}>
+            <span className="steps-num">0{index + 1}</span>
+            <h3>{step.title}</h3>
+            <p>{step.body}</p>
+          </motion.li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className={`faq-item${open ? " is-open" : ""}`}>
+      <button type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <span>{question}</span>
+        <Plus />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            className="faq-answer"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease }}
+          >
+            <p>{answer}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
 }
 
 export function HomePage() {
   const { hash } = useLocation()
   const config = usePublicConfig()
+
   useEffect(() => {
     if (!hash) return
     let id: string
@@ -34,288 +212,157 @@ export function HomePage() {
     return () => cancelAnimationFrame(frame)
   }, [hash])
 
+  const faqs: [string, string][] = [
+    ["Berapa harganya?", "Tergantung jenis pekerjaan, jumlah halaman atau slide, tingkat kesulitan, dan tenggat. Harga pasti diberikan setelah brief diperiksa, dan tidak berubah di tengah jalan."],
+    ["Bisa untuk deadline mepet?", "Bisa. Tulis tanggal dan jam yang kamu butuhkan. Ketersediaan waktu dikonfirmasi dulu sebelum kamu membayar."],
+    ["Bayarnya pakai apa?", config.qris.configured ? "Lewat QRIS merchant resmi. Kode QR baru muncul di halaman pesananmu setelah penawaran kamu setujui." : "Lewat QRIS yang muncul di halaman pesananmu setelah penawaran kamu setujui."],
+    ["Kalau hasilnya perlu revisi?", "Jumlah putaran revisi tertulis di penawaran. Selama masih dalam lingkup brief awal, revisi dikerjakan sampai tuntas."],
+    ["File saya aman?", "Lampiran dan hasil disimpan di penyimpanan privat, bukan folder publik. Hanya kamu dan admin yang bisa mengaksesnya."],
+  ]
+
   return (
     <PublicLayout>
-      <main>
-        <section className="hero shell-width">
-          <motion.div className="hero-copy" initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}>
-            <div className="hero-status-pill">
-              <span className="pulse-dot" /> PARTNER KEBUTUHAN DIGITAL · WITA
-            </div>
-            <h1>Yang masih berantakan,<br /><span className="hero-highlight">kita rapikan.</span></h1>
-            <p>Dokumen akademis, presentasi teknis, perbaikan coding, sampai website usaha—ceritakan kebutuhanmu. Spesifikasi dan harga disepakati dulu sebelum pengerjaan dimulai.</p>
-            <div className="hero-actions">
-              <Link className="button button-glow" to="/pesan">Ceritakan kebutuhanmu <ArrowUpRight /></Link>
-              <a className="button-pill-secondary" href="#portofolio">Lihat studi kasus <ArrowDownRight /></a>
-            </div>
-            <div className="hero-notes">
-              <span><Check /> 100% Harga disepakati di awal</span>
-              <span><Check /> {config.qris.configured ? "QRIS merchant resmi" : "Pembayaran aman via QRIS"}</span>
-              <span><Check /> Privasi berkas terjamin</span>
-            </div>
-          </motion.div>
-          <motion.div className="hero-stage" initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.12 }}>
-            <div className="os-window-bar">
-              <div className="os-dots"><i /><i /><i /></div>
-              <span>workspace-3d.app</span>
-              <span className="os-badge-live">INTERACTIVE</span>
-            </div>
-            <span className="stage-note">geser kursor / sentuh</span>
-            <HeroExperience />
-            <span className="stage-caption"><Sparkles /> DIGITAL Techrey</span>
-          </motion.div>
-        </section>
-
-        {/* ─── STUDIO MANIFESTO (PETTA DESAIN STYLE) ───────────────────── */}
-        <section className="intro-manifesto shell-width">
-          <div className="manifesto-grid">
-            <div className="manifesto-left">
-              <span className="eyebrow">TECHREY DIGITAL · WITA</span>
-              <p className="manifesto-sub">Presisi Teknis · Kerahasiaan Terjamin · Akuntabel</p>
-            </div>
-            <div className="manifesto-right">
-              <h2>Studio pengerjaan dan perapian digital terpercaya untuk kebutuhan akademis, materi presentasi profesional, serta website usaha.</h2>
-              <div className="manifesto-cols">
-                <p>
-                  Setiap pekerjaan diawali dengan penelaahan brief yang teliti. Ruang lingkup, tenggat waktu WITA, dan nominal biaya disepakati di awal secara transparan tanpa biaya tersembunyi.
-                </p>
-                <p>
-                  Menerapkan standar penyusunan rapi, tata bahasa baku, susunan kode bersih, serta visual presentasi yang komunikatif untuk hasil siap pakai.
-                </p>
-              </div>
-            </div>
+      <main className="home">
+        {/* ─── Hero ─────────────────────────────────────────────────── */}
+        <section className="home-hero shell-width">
+          <div className="home-hero-copy">
+            <h1 aria-label="Yang masih berantakan, kita rapikan.">
+              <RevealLine delay={0.05}><span aria-hidden="true">Yang masih</span></RevealLine>
+              <span className="hero-line"><MessyWord word="berantakan," /></span>
+              <span className="hero-line">
+                <motion.span aria-hidden="true" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4, duration: 0.5, ease }}>kita</motion.span>{" "}
+                <TidyWord word="rapikan." />
+              </span>
+            </h1>
+            <motion.p className="hero-lead" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55, duration: 0.5 }}>
+              Bantu beresin <WordRotator />
+            </motion.p>
+            <motion.p className="hero-sub" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65, duration: 0.5 }}>
+              Ceritakan kebutuhanmu. Harga dan tenggat disepakati di awal, baru dikerjakan.
+            </motion.p>
+            <motion.div className="hero-actions" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.75, duration: 0.5 }}>
+              <Link className="btn-brand btn-brand-lg" to="/pesan">Ceritakan kebutuhanmu <ArrowUpRight /></Link>
+              <a className="btn-quiet" href="#hasil">Lihat hasil kerja <ArrowDownRight /></a>
+            </motion.div>
+            <motion.ul className="hero-proof" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9, duration: 0.5 }}>
+              <li><Check /> Harga tetap</li>
+              <li><Check /> Bayar setelah setuju</li>
+              <li><Check /> File privat</li>
+            </motion.ul>
           </div>
+
+          <motion.div className="home-hero-visual" initial={{ opacity: 0, scale: 0.92, rotate: -2 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} transition={{ duration: 0.9, delay: 0.1, ease }}>
+            <div className="visual-shadow" aria-hidden="true" />
+            <div className="visual-panel">
+              <HeroExperience />
+            </div>
+            <motion.span className="visual-chip chip-a" animate={{ y: [0, -8, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}>
+              <b>Rp</b> Harga fix di awal
+            </motion.span>
+            <motion.span className="visual-chip chip-b" animate={{ y: [0, 8, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
+              <b>QR</b> Bayar via QRIS
+            </motion.span>
+          </motion.div>
         </section>
 
-        <div className="marquee" aria-label="Daftar layanan"><div>{["DOKUMEN", "PRESENTASI", "CODING", "WEBSITE", "REVIEW TUGAS"].map((item) => <span key={item}>{item}<Sparkles /></span>)}</div></div>
+        {/* ─── Marquee ──────────────────────────────────────────────── */}
+        <div className="ticker" aria-hidden="true">
+          <div className="ticker-track">
+            {[0, 1].map((copy) => (
+              <div className="ticker-group" key={copy}>
+                {MARQUEE_ITEMS.map((item) => <span key={item}>{item}<ArrowUpRight /></span>)}
+              </div>
+            ))}
+          </div>
+        </div>
 
-        <section className="content-section shell-width" id="layanan">
-          <motion.div className="section-heading" {...reveal}>
-            <div><span className="eyebrow">01 / YANG BISA DIBANTU</span><h2>Satu pintu untuk empat jenis kebutuhan.</h2></div>
-            <p>Pilih yang paling dekat dengan kebutuhanmu. Rincian penawaran dibuat setelah materi brief kamu periksa bersama.</p>
-          </motion.div>
-          <div className="service-grid">
+        {/* ─── Layanan ──────────────────────────────────────────────── */}
+        <section className="home-section shell-width" id="layanan">
+          <motion.header className="home-heading" {...reveal}>
+            <span className="section-tag">01 — Layanan</span>
+            <h2>Empat hal yang paling sering bikin pusing.</h2>
+          </motion.header>
+          <div className="services">
             {SERVICES.map((service, index) => {
               const item = serviceContent[service]
               const Icon = item.icon
               return (
-                <motion.article className={`service-card service-card-${index + 1}`} key={service} {...reveal} transition={{ duration: 0.45, delay: index * 0.06 }}>
-                  <div className="card-top"><span>0{index + 1}</span><Icon /></div>
-                  <span className="price-badge">{item.price}</span>
-                  <h3>{item.title}</h3><p>{item.body}</p>
-                  <Link to={`/pesan?layanan=${encodeURIComponent(service)}`}>{item.note} <ArrowUpRight /></Link>
+                <motion.article className="service" key={service} {...reveal} transition={{ ...reveal.transition, delay: index * 0.08 }}>
+                  <Link to={`/pesan?layanan=${encodeURIComponent(service)}`}>
+                    <div className="service-top">
+                      <span className="service-icon"><Icon /></span>
+                      <span className="service-price">{item.price}</span>
+                    </div>
+                    <h3>{service}</h3>
+                    <p>{item.body}</p>
+                    <span className="service-go">Pesan <ArrowUpRight /></span>
+                  </Link>
                 </motion.article>
               )
             })}
           </div>
-          <p className="academic-note">Untuk tugas yang dinilai, bantuan berupa pembahasan, review, dan penyuntingan. Kamu tetap penulis dan penanggung jawab tugasmu.</p>
+          <p className="fine-print">
+            Untuk tugas yang dinilai, bantuan berupa pembahasan, review, dan penyuntingan format. Kamu tetap penulis dan penanggung jawab tugasmu.
+          </p>
         </section>
 
-        {/* ─── REAL CLIENT PROJECT PROOF (STUDI KASUS PROYEK NYATA) ─────── */}
-        <section className="client-proof-section shell-width" id="portofolio">
-          <motion.div className="section-heading" {...reveal}>
-            <div>
-              <span className="eyebrow eyebrow-verified">02 / STUDI KASUS KLIEN</span>
-              <h2>Hasil pengerjaan website klien yang sudah selesai & aktif.</h2>
-            </div>
-            <p>Studi kasus nyata Techrey Digital: dari brief kebutuhan, pengerjaan tepat waktu, hingga online dan disetujui tanpa biaya tambahan.</p>
-          </motion.div>
-
-          <motion.article className="proof-card" {...reveal}>
-            <div className="proof-card-grid">
-              <div className="proof-info">
-                <div className="proof-tag-row">
-                  <span className="proof-badge-verified">✓ PROYEK KLIEN SELESAI</span>
-                  <span className="proof-category-tag">WEBSITE & KATALOG UMKM</span>
-                </div>
-
-                <h3>Aroma Nusa Coffee & Roastery</h3>
-                <p className="proof-desc">
-                  Klien memerlukan landing page estetik untuk profil kedai, katalog menu digital yang cepat dibuka di HP, serta tombol pesan langsung via WhatsApp tanpa perlu repot komisi aplikasi ojek online.
-                </p>
-
-                <div className="proof-metrics-grid">
-                  <div className="metric-box">
-                    <small>Waktu Pengerjaan</small>
-                    <strong>3 Hari Kerja</strong>
-                  </div>
-                  <div className="metric-box">
-                    <small>Status Proyek</small>
-                    <strong className="status-success-tag">✓ Rilis & Digunakan</strong>
-                  </div>
-                  <div className="metric-box">
-                    <small>Biaya Kesepakatan</small>
-                    <strong>Rp350.000 (Tetap)</strong>
-                  </div>
-                  <div className="metric-box">
-                    <small>Mobile Speed</small>
-                    <strong>99 / 100 (Ringan)</strong>
-                  </div>
-                </div>
-
-                <div className="proof-deliverables">
-                  <span><Check /> Desain antarmuka modern responsif (HP & Desktop)</span>
-                  <span><Check /> Menu interaktif kategori (Kopi, Non-Kopi, Pastry)</span>
-                  <span><Check /> Integrasi direct WhatsApp order dengan format otomatis</span>
-                  <span><Check /> Bantuan hosting & panduan update berkala</span>
-                </div>
-
-                <div className="proof-testimonial">
-                  <div className="testimonial-stars">★★★★★</div>
-                  <p>"Hasilnya rapi banget dan cepat. Pelanggan buka link di bio IG langsung gampang milih menu dan pesannya nyambung ke WA. Komunikasi lancar dari awal sampai jadi."</p>
-                  <small>— Klien UMKM Kuliner, Balikpapan (WITA)</small>
-                </div>
+        {/* ─── Hasil kerja ──────────────────────────────────────────── */}
+        <section className="home-section home-work" id="hasil">
+          <div className="shell-width">
+            <motion.header className="home-heading" {...reveal}>
+              <span className="section-tag">02 — Hasil kerja</span>
+              <h2>Website yang sudah live dan dipakai.</h2>
+            </motion.header>
+            <ShowcaseFrame />
+            <motion.div className="showcase-meta" {...reveal}>
+              <div>
+                <strong>PETTA Desain</strong>
+                <span>Website studio arsitektur · Kendari</span>
               </div>
-
-              <div className="proof-mockup-wrapper">
-                <div className="os-window-frame">
-                  <div className="os-window-bar">
-                    <div className="os-dots"><i /><i /><i /></div>
-                    <div className="browser-url-pill">
-                      <span>🔒</span> aromanusa-coffee.id
-                    </div>
-                    <span className="os-live-pill">● LIVE PREVIEW</span>
-                  </div>
-                  
-                  {/* Visual preview of the completed client web */}
-                  <div className="mockup-screen">
-                    <div className="mockup-nav">
-                      <b>AROMA NUSA.</b>
-                      <div className="mockup-nav-links">
-                        <span>Menu</span>
-                        <span>Lokasi</span>
-                        <span className="mockup-wa-btn">Order WA</span>
-                      </div>
-                    </div>
-                    <div className="mockup-hero">
-                      <span className="mockup-pill">ARTISAN COFFEE ROAST</span>
-                      <h4>Secangkir Kopi Jujur, Teman Cerita Setiap Hari.</h4>
-                      <p>Dipanggang segar setiap minggu di Balikpapan untuk rasa otentik yang membumi.</p>
-                    </div>
-                    <div className="mockup-menu">
-                      <div className="mockup-menu-heading">
-                        <span>MENU ANDALAN KEDAI</span>
-                        <small>Freshly Brewed</small>
-                      </div>
-                      <div className="mockup-items">
-                        <div className="mockup-item">
-                          <span className="mockup-item-tag">FAVORIT</span>
-                          <strong>Aren Cream Latte</strong>
-                          <div className="mockup-item-foot">
-                            <span>Rp22.000</span>
-                            <span className="mockup-order-badge">+ Pesan</span>
-                          </div>
-                        </div>
-                        <div className="mockup-item">
-                          <strong>Kyoto Matcha Cloud</strong>
-                          <div className="mockup-item-foot">
-                            <span>Rp25.000</span>
-                            <span className="mockup-order-badge">+ Pesan</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mockup-footer">
-                      <span>📍 Jl. MT Haryono, Balikpapan · Buka Setiap Hari</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.article>
-        </section>
-
-        {/* ─── EXPLORATION & CAPABILITY SAMPLES ─────────────────────────── */}
-        <section className="work-section" id="karya">
-          <div className="content-section shell-width">
-            <motion.div className="section-heading section-heading-light" {...reveal}>
-              <div><span className="eyebrow">03 / CONTOH EKSPLORASI FORMAT LAIN</span><h2>Presentasi, dokumen terstruktur, dan review kode.</h2></div>
-              <p>Selain website, ini contoh kerapian teknis untuk pengerjaan materi kuliah dan tugas akademis.</p>
+              <a className="btn-brand" href="https://pettadesain.id" target="_blank" rel="noopener noreferrer">
+                Kunjungi pettadesain.id <ArrowUpRight />
+              </a>
             </motion.div>
-            <div className="work-grid work-grid-4">
-              <motion.article className="work-sample sample-slides" {...reveal}>
-                <div className="os-window-bar"><div className="os-dots"><i /><i /><i /></div><span>presentasi.pptx</span></div>
-                <div className="sample-badge">CONTOH PPT</div>
-                <div className="slide-sheet"><small>RUANG TUMBUH / 2026</small><h3>Small steps.<br />Big impact.</h3><span>STRATEGI KOMUNIKASI <b>01—12</b></span></div>
-                <footer><strong>Presentasi yang punya alur</strong><span>Materi → narasi → visual</span></footer>
-              </motion.article>
-              <motion.article className="work-sample sample-site" {...reveal}>
-                <div className="os-window-bar"><div className="os-dots"><i /><i /><i /></div><span>index.html</span></div>
-                <div className="sample-badge">CONTOH WEB MINIMALIS</div>
-                <div className="site-sheet"><nav><b>forma.</b><span>Studio&nbsp;&nbsp; Work&nbsp;&nbsp; Contact</span></nav><small>INDEPENDENT DESIGN STUDIO</small><h3>Spaces for<br />better living.</h3><span>Explore the studio <ArrowUpRight /></span></div>
-                <footer><strong>Website dengan karakter</strong><span>Rapi di layar besar dan HP</span></footer>
-              </motion.article>
-              <motion.article className="work-sample sample-doc" {...reveal}>
-                <div className="os-window-bar"><div className="os-dots"><i /><i /><i /></div><span>laporan.docx</span></div>
-                <div className="sample-badge">CONTOH DOKUMEN</div>
-                <div className="doc-sheet">
-                  <div className="doc-header"><strong>BAB III — METODOLOGI</strong></div>
-                  <div className="doc-line doc-line-full" />
-                  <div className="doc-line doc-line-full" />
-                  <div className="doc-line doc-line-mid" />
-                  <div className="doc-spacer" />
-                  <div className="doc-line doc-line-full" />
-                  <div className="doc-line doc-line-full" />
-                  <div className="doc-line doc-line-short" />
-                  <div className="doc-spacer" />
-                  <div className="doc-ref-header"><strong>Daftar Pustaka</strong></div>
-                  <div className="doc-ref-item"><span>[1]</span><div className="doc-line doc-line-full" /></div>
-                  <div className="doc-ref-item"><span>[2]</span><div className="doc-line doc-line-mid" /></div>
-                </div>
-                <footer><strong>Format presisi</strong><span>Margin → Sitasi → Daftar Pustaka</span></footer>
-              </motion.article>
-              <motion.article className="work-sample sample-code" {...reveal}>
-                <div className="os-window-bar"><div className="os-dots"><i /><i /><i /></div><span>review.jsx</span></div>
-                <div className="sample-badge">CONTOH REVIEW & CODING</div>
-                <div className="code-sheet">
-                  <code>
-                    <span className="code-kw">function</span> <span className="code-fn">hitungTotal</span>(items) {"{"}<br />
-                    &nbsp;&nbsp;<span className="code-kw">let</span> total = <span className="code-num">0</span>;<br />
-                    &nbsp;&nbsp;<span className="code-kw">for</span> (<span className="code-kw">let</span> i <span className="code-kw">of</span> items) {"{"}<br />
-                    &nbsp;&nbsp;&nbsp;&nbsp;total += i.harga * i.qty;<br />
-                    &nbsp;&nbsp;{"}"}<br />
-                    &nbsp;&nbsp;<span className="code-kw">return</span> total;<br />
-                    {"}"}
-                  </code>
-                </div>
-                <div className="code-review-note">
-                  <strong>✓ Review</strong>
-                  <span>Fungsi sudah benar. Tambahkan validasi <code>items</code> agar tidak error saat array kosong.</span>
-                </div>
-                <footer><strong>Kode & pembahasan jelas</strong><span>Bug fix → Penjelasan alur</span></footer>
-              </motion.article>
-            </div>
           </div>
         </section>
 
-        <section className="content-section shell-width process-section">
-          <motion.div className="section-heading" {...reveal}><div><span className="eyebrow">03 / DARI BRIEF KE HASIL</span><h2>Langkahnya kelihatan dari awal.</h2></div><p>Tidak langsung dikerjakan. Brief, penawaran, dan pembayaran disepakati lebih dulu.</p></motion.div>
-          <div className="process-grid">
-            {["Ceritakan kebutuhan", "Periksa & sepakati", "Bayar via QRIS", "Pantau dan terima hasil"].map((item, index) => <motion.article key={item} {...reveal}><span>0{index + 1}</span><h3>{item}</h3><p>{[
-              "Pilih layanan, tulis konteks, dan tentukan tenggat WITA.",
-              "Techrey memeriksa brief lalu membuat harga, hasil, serta batas revisi.",
-              "Pembayaran baru dilakukan setelah penawaran disetujui dan perlu diverifikasi admin.",
-              "Status pekerjaan, file hasil, dan revisi berada di halaman pesananmu.",
-            ][index]}</p></motion.article>)}
-          </div>
+        {/* ─── Alur ─────────────────────────────────────────────────── */}
+        <section className="home-section shell-width" id="alur">
+          <motion.header className="home-heading" {...reveal}>
+            <span className="section-tag">03 — Alur</span>
+            <h2>Jelas dari awal sampai selesai.</h2>
+          </motion.header>
+          <ProcessSteps />
         </section>
 
-        <section className="faq-section shell-width" id="faq">
-          <motion.div {...reveal}><span className="eyebrow">04 / SEBELUM MULAI</span><h2>Hal yang sering perlu dipastikan.</h2></motion.div>
-          <motion.div className="faq-list" {...reveal}>
-            {[
-              ["Harganya berapa?", "Harga bergantung pada jenis pekerjaan, jumlah halaman atau slide, tingkat kesulitan, dan tenggat. Penawaran dibuat setelah brief diperiksa."],
-              ["Bisa untuk deadline dekat?", "Tuliskan tanggal dan jam yang kamu butuhkan. Kapasitas dan waktunya akan dicek sebelum kamu membayar."],
-              ["Bayarnya pakai apa?", config.qris.configured ? "Pembayaran melalui QRIS merchant. QR hanya muncul pada akun pelanggan setelah penawaran disetujui." : "Pembayaran dilakukan melalui QRIS atau transfer resmi yang otomatis muncul di halaman pesananmu setelah penawaran harga kamu setujui."],
-              ["Kalau perlu revisi?", "Jumlah putaran dan batas waktunya tertulis di penawaran. Perubahan di luar lingkup perlu penawaran baru."],
-              ["File saya aman?", "Lampiran dan hasil disimpan di area privat server, tidak berada di folder publik. Aksesnya diperiksa berdasarkan akun pemilik pesanan atau admin."],
-            ].map(([question, answer]) => <details key={question}><summary>{question}<span>+</span></summary><p>{answer}</p></details>)}
+        {/* ─── FAQ ──────────────────────────────────────────────────── */}
+        <section className="home-section shell-width home-faq" id="faq">
+          <motion.header className="home-heading" {...reveal}>
+            <span className="section-tag">04 — FAQ</span>
+            <h2>Yang biasanya ditanyakan.</h2>
+          </motion.header>
+          <motion.div className="faq" {...reveal}>
+            {faqs.map(([question, answer]) => <FaqItem key={question} question={question} answer={answer} />)}
           </motion.div>
         </section>
 
-        <section className="cta-section shell-width">
-          <div><span className="eyebrow">PUNYA YANG PERLU DIRAPIKAN?</span><h2>Mulai dari ceritanya dulu.</h2><p>Belum perlu bayar. Brief akan diperiksa sebelum ada penawaran.</p></div>
-          <div className="cta-actions"><Link className="button button-light" to="/pesan">Ajukan kebutuhan <ArrowUpRight /></Link>{config.whatsapp.configured && config.whatsapp.href && <a className="button button-whatsapp" href={config.whatsapp.href} target="_blank" rel="noreferrer">Chat dulu <MessageCircle /></a>}</div>
+        {/* ─── CTA ──────────────────────────────────────────────────── */}
+        <section className="shell-width">
+          <motion.div className="home-cta" {...reveal}>
+            <motion.div className="cta-arrow" aria-hidden="true" animate={{ x: [0, 10, 0], y: [0, -10, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
+              <ArrowUpRight />
+            </motion.div>
+            <h2>Mulai dari ceritanya dulu.</h2>
+            <p>Belum perlu bayar. Kirim kebutuhanmu, kami periksa dan kirim penawaran.</p>
+            <div className="cta-buttons">
+              <Link className="btn-lime" to="/pesan">Ajukan kebutuhan <ArrowUpRight /></Link>
+              {config.whatsapp.configured && config.whatsapp.href && (
+                <a className="btn-outline-dark" href={config.whatsapp.href} target="_blank" rel="noreferrer">
+                  <MessageCircle /> Chat WhatsApp
+                </a>
+              )}
+            </div>
+          </motion.div>
         </section>
       </main>
     </PublicLayout>
