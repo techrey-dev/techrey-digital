@@ -20,6 +20,12 @@ function getDatabaseUrl() {
 }
 
 const dbUrl = getDatabaseUrl()
+
+// Reported by /api/health so a deploy can confirm where orders are stored without exposing paths.
+export const storageKind = process.env.TURSO_DATABASE_URL
+  ? "turso"
+  : process.env.TECHREY_DATA_DIR ? "sqlite-data-dir" : process.env.VERCEL ? "sqlite-tmp" : "sqlite-app-folder"
+
 if (dbUrl.startsWith("file:")) {
   const filePath = dbUrl.slice(5)
   const dir = dirname(filePath)

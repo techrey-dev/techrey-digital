@@ -3,7 +3,7 @@ import express from "express"
 import { fromNodeHeaders, toNodeHandler } from "better-auth/node"
 import { auth, configuredProviders, getAdminEmails } from "./server/auth.mjs"
 import { applyAdminAction, applyCustomerAction, DomainRuleError } from "./server/domain.mjs"
-import { getOrder, getOrderForOwner, initializeDatabase, listOrders, listOrdersByOwner, nextOrderId, saveOrder } from "./server/database.mjs"
+import { getOrder, getOrderForOwner, initializeDatabase, listOrders, listOrdersByOwner, nextOrderId, saveOrder, storageKind } from "./server/database.mjs"
 import { aiConfig, publicRuntimeConfig, qrisConfig } from "./server/runtime-config.mjs"
 import { fetchBlobBuffer, readPrivateFile, removePrivateFile, storePrivateFile } from "./server/private-files.mjs"
 import { analyzeOrderWithAi } from "./server/ai-assistant.mjs"
@@ -117,7 +117,7 @@ async function createOrder(draft) {
   }
 }
 
-app.get("/api/health", (_request, response) => response.json({ ok: true, storage: "turso", auth: "better-auth" }))
+app.get("/api/health", (_request, response) => response.json({ ok: true, storage: storageKind, auth: "better-auth" }))
 app.get("/api/auth-config", (_request, response) => response.json({ providers: configuredProviders, adminConfigured: getAdminEmails().size > 0 }))
 app.get("/api/public-config", (_request, response) => response.json(publicRuntimeConfig()))
 
